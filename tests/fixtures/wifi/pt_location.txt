@@ -1,0 +1,9 @@
+Os comandos do shell de rede precisam de permissão de localização para acessar informações de WLAN. Ative os serviços de localização na página Localização nas configurações de Privacidade e segurança.
+
+Este é o URI da página Localização no aplicativo Configurações:
+ms-settings:privacy-location
+Para abrir a página Localização no aplicativo Configurações, mantenha a tecla Ctrl pressionada e selecione o link ou execute o seguinte comando:
+start ms-settings:privacy-location
+
+A função WlanQueryInterface retorna o erro 5:
+Acesso negado.

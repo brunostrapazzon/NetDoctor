@@ -1,12 +1,9 @@
-"""Linha de comando: `netdoctor diagnose [--json] [--output ARQUIVO]`."""
+"""Linha de comando: `netdoctor diagnose [--json] [-o ARQUIVO.json] [--html ARQUIVO.html]`."""
 
 from __future__ import annotations
 
 import argparse
-import json
-import platform
 import sys
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -14,28 +11,20 @@ from netdoctor import __version__
 from netdoctor.core.models import Diagnosis, ProbeResult
 from netdoctor.core.rules import diagnose
 from netdoctor.core.runner import run_all
+from netdoctor.explain.templates import explain
+from netdoctor.report.html_report import write_html
+from netdoctor.report.json_report import build_report, to_json, write_json
 
 _PROGRESS = {
     "adapter": "Verificando a conexão do computador…",
+    "wifi": "Medindo o sinal do Wi-Fi…",
     "ping": "Testando o roteador e a internet…",
     "dns": "Testando a tradução de nomes (DNS)…",
     "http": "Testando o acesso a sites…",
 }
 
 
-def build_report(results: list[ProbeResult], diagnosis: Diagnosis) -> dict[str, Any]:
-    return {
-        "tool": "netdoctor",
-        "version": __version__,
-        "generated_at": datetime.now(UTC).isoformat(timespec="seconds"),
-        "os": {"system": platform.system(), "release": platform.release()},
-        "diagnosis": diagnosis.to_dict(),
-        "probes": [r.to_dict() for r in results],
-    }
-
-
 def format_diagnosis(diagnosis: Diagnosis) -> str:
-    """Códigos técnicos. O texto para leigos (templates pt-BR) chega no Marco 3."""
     p = diagnosis.primary
     lines = [f"Diagnóstico: {p.code} ({p.severity}) -> ação {p.action}"]
     for extra in diagnosis.findings[1:]:
@@ -52,7 +41,7 @@ def _fmt_ping(target: dict[str, Any]) -> str:
 
 
 def format_summary(results: list[ProbeResult]) -> str:
-    """Resumo técnico dos fatos. A explicação para leigos chega no Marco 3."""
+    """Resumo técnico dos fatos, para quem dá suporte."""
     lines = []
     for r in results:
         if not r.ok:
@@ -67,6 +56,16 @@ def format_summary(results: list[ProbeResult]) -> str:
                 )
             else:
                 lines.append("[adapter] nenhum adaptador conectado")
+        elif r.name == "wifi":
+            if d.get("skipped"):
+                lines.append("[wifi] não se aplica (conexão por cabo)")
+            elif d["connected"]:
+                lines.append(
+                    f"[wifi] sinal {d['signal_pct']}% ({d['rssi_dbm']} dBm) | canal {d['channel']}"
+                    f" | {d['band']} | {d['radio']}"
+                )
+            else:
+                lines.append("[wifi] desconectado")
         elif r.name == "ping":
             lines.append("[ping] " + " | ".join(_fmt_ping(t) for t in d["targets"]))
         elif r.name == "dns":
@@ -98,18 +97,25 @@ def _progress(name: str) -> None:
 def cmd_diagnose(args: argparse.Namespace) -> int:
     results = run_all(on_progress=None if args.json else _progress)
     diagnosis = diagnose(results)
-    report = build_report(results, diagnosis)
-    text = json.dumps(report, ensure_ascii=False, indent=2)
+    explanation = explain(diagnosis, results)
+    report = build_report(results, diagnosis, explanation)
+
+    saved = []
     if args.output:
-        Path(args.output).write_text(text, encoding="utf-8")
+        saved.append(write_json(report, Path(args.output)))
+    if args.html:
+        saved.append(write_html(report, Path(args.html)))
+
     if args.json:
-        print(text)
-    else:
-        print(format_diagnosis(diagnosis))
-        print()
-        print(format_summary(results))
-        if args.output:
-            print(f"\nRelatório salvo em {args.output}")
+        print(to_json(report))
+        return 0
+
+    print(explanation.as_text())
+    print("\n--- Detalhes técnicos ---")
+    print(format_diagnosis(diagnosis))
+    print(format_summary(results))
+    for path in saved:
+        print(f"\nRelatório salvo em {path}")
     return 0
 
 
@@ -120,6 +126,7 @@ def build_parser() -> argparse.ArgumentParser:
     diag = sub.add_parser("diagnose", help="Testa a conexão e mostra o resultado.")
     diag.add_argument("--json", action="store_true", help="Saída em JSON.")
     diag.add_argument("--output", "-o", metavar="ARQUIVO", help="Salva o relatório JSON.")
+    diag.add_argument("--html", metavar="ARQUIVO", help="Salva o relatório técnico HTML.")
     diag.set_defaults(func=cmd_diagnose)
     return parser
 

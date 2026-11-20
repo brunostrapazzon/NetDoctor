@@ -1,0 +1,28 @@
+
+Há 1 interface no sistema: 
+
+    Nome                   : Wi-Fi
+    Descrição            : Realtek 8812BU Wireless LAN 802.11ac USB NIC
+    GUID                   : 00000000-0000-0000-0000-000000000000
+    Endereço físico       : aa:bb:cc:dd:ee:ff
+    Tipo de interface         : Primário
+    Estado                  : Conectado
+    SSID                   : MinhaRede_5G
+    AP BSSID               : 11:22:33:44:55:66
+    Banda                   : 5 GHz
+    Canal                : 36
+    Codificação Akm Conectada : [ akm = 00-0f-ac:02, cipher = 00-0f-ac:04 ]
+    Tipo de rede           : Infraestrutura
+    Tipo de rádio             : 802.11ac
+    Autenticação         : WPA2-Personal
+    Criptografia                 : CCMP
+    Modo de conexão        : Conexão Automática
+    Taxa de recepção (Mbps)    : 866.7
+    Taxa de transmissão (Mbps)   : 866.7
+    Sinal                 : 38% 
+    Rssi                   : -81
+    Perfil                : MinhaRede_5G 
+    QoS MSCS Configurado: 0
+    Mapa QoS Configurado : 0
+    Mapa QoS Permitido pela Política : 0
+

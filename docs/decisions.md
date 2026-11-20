@@ -26,6 +26,15 @@ Fatos confirmados na documentação oficial em 2026-11-20. Rever antes dos marco
 - **Ações** são códigos (`RESTART_ROUTER`, `CALL_ISP`...). O texto para leigos fica nos templates do Marco 3.
 - `WIFI_WEAK` já está implementado e testado, mas só dispara de verdade quando a probe `wifi` existir (Marco 3).
 
+## Marco 3: Wi-Fi, explicações offline e relatórios
+
+- **Wi-Fi via `netsh wlan show interfaces`.** É o único caminho sem administrador e sem `ctypes` para ler o sinal. Os rótulos ficam numa tabela PT/EN, normalizados sem acento e comparados de forma exata, para que `SSID` não case com `AP BSSID`. Com mais de uma interface, vale a que está conectada. Em conexão por cabo a probe nem roda o `netsh` (`skipped: not_wifi`).
+- **Fato verificado na captura real (Windows 11 pt-BR):** o `netsh` escreve **UTF-8** quando a saída é redirecionada, enquanto o `ping` escreve cp850. Por isso `proc.decode_output` tenta UTF-8 estrito e cai para OEM.
+- **Localização (24H2+).** A doc oficial da Microsoft ("Changes to API behavior for Wi-Fi access and location", atualizada em 2025-06-06) lista as APIs `wlanapi` afetadas (`WlanQueryInterface` com `current_connection` devolve `ERROR_ACCESS_DENIED`), mas não cita o `netsh` nem o texto exato da mensagem. A detecção é por palavras-chave ("location"+"permission" / "localização"+"permiss") → `LOCATION_PERMISSION`. A explicação orienta ativar Configurações > Privacidade e segurança > Localização. **Os textos dos exemplos de Localização em PT e EN foram montados, não capturados: substituir por capturas reais.**
+- **Wi-Fi sem leitura ≠ Wi-Fi fraco.** Localização negada, sem interface ou timeout viram `ok=False`, e a regra `WIFI_WEAK` não dispara.
+- **Templates pt-BR** em `explain/templates.py`: frase de causa + detalhe + 1–3 ações + rótulo curto para achados secundários ("Também notamos: …"). Um teste barra jargão (gateway, DNS, DHCP, IP, ping, latência...). Os números da evidência aparecem em linguagem simples (ex.: "Força do sinal: 38%").
+- **Relatório HTML autocontido.** Um arquivo só, CSS embutido, tema claro/escuro, nenhum recurso externo (testado). Todo valor passa por `html.escape`, porque o SSID é texto de terceiros (testado com `<script>`). Rodapé avisando que o arquivo contém dados da rede local. O JSON inclui diagnóstico, explicação e fatos brutos.
+
 ## Empacotamento (Marco 6)
 
 - **CustomTkinter + PyInstaller:** o wiki do CustomTkinter manda usar `--onedir` com `--add-data` manual. **Isso está desatualizado.** O `pyinstaller-hooks-contrib` hoje inclui `hook-customtkinter.py`, que coleta sozinho os dados da biblioteca (`collect_data_files("customtkinter")`). Então `--onefile --windowed` deve funcionar sem `--add-data`. Validar no build real.

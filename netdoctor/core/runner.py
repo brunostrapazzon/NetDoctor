@@ -13,12 +13,13 @@ from concurrent.futures import TimeoutError as FutureTimeout
 from typing import Any
 
 from netdoctor.core.models import ErrorCode, ProbeResult
-from netdoctor.core.probes import adapter, dns, http, ping
+from netdoctor.core.probes import adapter, dns, http, ping, wifi
 
 ProbeFn = Callable[[dict[str, Any]], ProbeResult]
 
 FIRST: tuple[tuple[str, ProbeFn], ...] = ((adapter.NAME, adapter.run),)
 PARALLEL: tuple[tuple[str, ProbeFn], ...] = (
+    (wifi.NAME, wifi.run),
     (ping.NAME, ping.run),
     (dns.NAME, dns.run),
     (http.NAME, http.run),

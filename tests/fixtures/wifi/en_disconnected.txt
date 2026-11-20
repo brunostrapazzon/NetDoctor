@@ -1,0 +1,11 @@
+
+There is 1 interface on the system:
+
+    Name                   : Wi-Fi
+    Description            : Realtek 8812BU Wireless LAN 802.11ac USB NIC
+    GUID                   : 00000000-0000-0000-0000-000000000000
+    Physical address       : aa:bb:cc:dd:ee:ff
+    Interface type         : Primary
+    State                  : disconnected
+    Radio status           : Hardware On
+                             Software On

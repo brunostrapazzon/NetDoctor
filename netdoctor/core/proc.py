@@ -20,6 +20,22 @@ def _default_encoding() -> str:
     return "oem" if sys.platform == "win32" else locale.getpreferredencoding(False)
 
 
+def decode_output(raw: bytes, encoding: str | None = None) -> str:
+    """Decodifica a saída de um comando.
+
+    Sem `encoding` explícito, tenta UTF-8 estrito e cai para a code page OEM.
+    Motivo: no Windows 11 o `netsh` escreve UTF-8 quando a saída é redirecionada,
+    enquanto o `ping` escreve cp850. Texto cp850 com acento quase nunca é UTF-8
+    válido, então a tentativa é segura.
+    """
+    if encoding:
+        return raw.decode(encoding, errors="replace")
+    try:
+        return raw.decode("utf-8")
+    except UnicodeDecodeError:
+        return raw.decode(_default_encoding(), errors="replace")
+
+
 def run_command(args: list[str], timeout: float, encoding: str | None = None) -> tuple[int, str]:
     """Roda `args` e devolve (returncode, stdout decodificado).
 
@@ -43,5 +59,4 @@ def run_command(args: list[str], timeout: float, encoding: str | None = None) ->
         raise CommandTimeout(f"{args[0]} excedeu {timeout}s") from exc
     except OSError as exc:
         raise CommandError(f"{args[0]}: {exc}") from exc
-    text = completed.stdout.decode(encoding or _default_encoding(), errors="replace")
-    return completed.returncode, text
+    return completed.returncode, decode_output(completed.stdout, encoding)
