@@ -2,7 +2,11 @@
 
 Diagnóstico de internet para Windows que explica a causa do problema em português simples.
 
-> **Status:** Marco 3 de 7: testes de rede (incluindo Wi-Fi), regras de diagnóstico, explicação em português simples e relatórios JSON/HTML pela linha de comando. Ainda sem interface gráfica e sem `.exe`.
+> **Status:** Marco 4 de 7: interface gráfica do Modo Cliente, testes de rede (incluindo Wi-Fi), regras de diagnóstico, explicação em português simples e relatórios JSON/HTML. Ainda sem `.exe` (roda a partir do código-fonte).
+
+| Testando | Resultado (tema claro) | Resultado (tema escuro) |
+|---|---|---|
+| ![Testando](docs/img/cliente-testando.png) | ![Resultado claro](docs/img/cliente-claro.png) | ![Resultado escuro](docs/img/cliente-escuro.png) |
 
 ## O problema
 
@@ -16,6 +20,7 @@ Requer Windows 10/11 e Python 3.11+. Não precisa de administrador.
 py -3.12 -m venv .venv
 .venv\Scripts\pip install -e ".[dev]"
 
+.venv\Scripts\netdoctor-gui                       # interface gráfica (Modo Cliente)
 .venv\Scripts\netdoctor diagnose                  # explicação + detalhes técnicos
 .venv\Scripts\netdoctor diagnose --json           # relatório JSON completo
 .venv\Scripts\netdoctor diagnose -o rel.json      # salva o relatório JSON
@@ -86,6 +91,14 @@ Os limiares ficam em [`netdoctor/core/thresholds.toml`](netdoctor/core/threshold
 - **Relatório JSON**: diagnóstico, explicação e todos os fatos medidos.
 - **Relatório HTML**: um único arquivo, sem nada externo, que abre offline em qualquer navegador e pode ser anexado num chamado. Tem tema claro e escuro.
 
+### Interface (Modo Cliente)
+
+Um botão **Diagnosticar**, uma lista de etapas que vai sendo marcada (✔) conforme cada teste termina e, no fim, o resultado com ícone e cor (✔ normal, ⚠ atenção, ✖ problema) e o que fazer. **Salvar relatório** grava o HTML e uma cópia `.json` para o suporte. **Copiar resumo** copia só a explicação e os códigos, sem nome da rede nem endereços, pronto para colar no WhatsApp.
+
+**Por que CustomTkinter:** é leve, roda sobre o Tkinter que já vem com o Python, tem tema claro/escuro automático e escala bem em telas HiDPI. O PyInstaller tem hook oficial para ele, o que mantém o `.exe` pequeno. PySide6/Qt deixaria o executável dezenas de MB maior e complica a licença; Tkinter puro tem visual datado.
+
+O diagnóstico roda numa thread separada e conversa com a janela por uma fila, então a tela nunca trava. A lógica da tela (textos, resumo, thread) tem testes que não precisam abrir janela.
+
 ### Por que a IA não decide o diagnóstico
 
 O diagnóstico vem de regras fixas e testadas. A IA (opcional, Marco 5) só reescreve em linguagem simples um resultado que já foi decidido. Assim o resultado é reproduzível, funciona sem internet (justamente quando o usuário mais precisa) e não depende do humor de um modelo.
@@ -117,7 +130,7 @@ Os testes usam saídas reais (anonimizadas) dos comandos em `tests/fixtures/` e 
 1. ✅ Núcleo + CLI
 2. ✅ Regras de diagnóstico + testes PT/EN
 3. ✅ Wi-Fi, explicações offline, relatórios JSON e HTML
-4. Interface do Modo Cliente
+4. ✅ Interface do Modo Cliente
 5. IA opcional com fallback
 6. `.exe` via PyInstaller + GitHub Actions
 7. Modo Técnico
@@ -126,7 +139,7 @@ Os testes usam saídas reais (anonimizadas) dos comandos em `tests/fixtures/` e 
 
 ## English summary
 
-NetDoctor is a Windows tool that diagnoses home/office internet problems and explains the cause in plain Portuguese. It grew out of three years of ISP field support, where most "my internet is down" tickets turn out to be weak Wi-Fi, a stuck router or DNS. Diagnosis comes from deterministic, tested rules. An optional LLM only rewrites the already-decided result, and everything works offline. Current status: milestone 3 (probes incl. Wi-Fi signal, deterministic rule engine, offline Portuguese explanations, self-contained JSON/HTML reports via CLI).
+NetDoctor is a Windows tool that diagnoses home/office internet problems and explains the cause in plain Portuguese. It grew out of three years of ISP field support, where most "my internet is down" tickets turn out to be weak Wi-Fi, a stuck router or DNS. Diagnosis comes from deterministic, tested rules. An optional LLM only rewrites the already-decided result, and everything works offline. Current status: milestone 4 (CustomTkinter one-click client UI on top of probes incl. Wi-Fi signal, a deterministic rule engine, offline Portuguese explanations and self-contained JSON/HTML reports; CLI also available).
 
 ## Licença
 

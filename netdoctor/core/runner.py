@@ -42,14 +42,25 @@ def run_all(
     parallel: tuple[tuple[str, ProbeFn], ...] = PARALLEL,
     timeout: float = PROBE_TIMEOUT_S,
     on_progress: Callable[[str], None] | None = None,
+    on_done: Callable[[ProbeResult], None] | None = None,
 ) -> list[ProbeResult]:
+    """`on_progress(nome)` quando uma probe começa; `on_done(resultado)` quando termina.
+
+    Os callbacks podem ser chamados de outras threads.
+    """
+
+    def finish(result: ProbeResult) -> ProbeResult:
+        if on_done:
+            on_done(result)
+        return result
+
     results: list[ProbeResult] = []
     ctx: dict[str, Any] = {}
 
     for name, fn in first:
         if on_progress:
             on_progress(name)
-        result = _safe(name, fn, ctx)
+        result = finish(_safe(name, fn, ctx))
         results.append(result)
         if result.ok:
             ctx.update(result.data)
@@ -63,13 +74,17 @@ def run_all(
         for name, fn in parallel:
             if on_progress:
                 on_progress(name)
-            futures.append((name, pool.submit(_safe, name, fn, dict(ctx))))
+            future = pool.submit(_safe, name, fn, dict(ctx))
+            future.add_done_callback(
+                lambda f: None if f.cancelled() or f.exception() else finish(f.result())
+            )
+            futures.append((name, future))
         deadline = time.monotonic() + timeout
         for name, future in futures:
             try:
                 results.append(future.result(timeout=max(0.0, deadline - time.monotonic())))
             except FutureTimeout:
-                results.append(ProbeResult(name, ok=False, error=ErrorCode.TIMEOUT))
+                results.append(finish(ProbeResult(name, ok=False, error=ErrorCode.TIMEOUT)))
     finally:
         # Não espera threads presas: o diagnóstico sai mesmo com uma probe travada.
         pool.shutdown(wait=False, cancel_futures=True)

@@ -35,6 +35,16 @@ Fatos confirmados na documentação oficial em 2026-11-20. Rever antes dos marco
 - **Templates pt-BR** em `explain/templates.py`: frase de causa + detalhe + 1–3 ações + rótulo curto para achados secundários ("Também notamos: …"). Um teste barra jargão (gateway, DNS, DHCP, IP, ping, latência...). Os números da evidência aparecem em linguagem simples (ex.: "Força do sinal: 38%").
 - **Relatório HTML autocontido.** Um arquivo só, CSS embutido, tema claro/escuro, nenhum recurso externo (testado). Todo valor passa por `html.escape`, porque o SSID é texto de terceiros (testado com `<script>`). Rodapé avisando que o arquivo contém dados da rede local. O JSON inclui diagnóstico, explicação e fatos brutos.
 
+## Marco 4: interface do Modo Cliente
+
+- **CustomTkinter (6.0.0 instalado; API conferida na documentação oficial).** É leve, roda sobre o Tkinter que já vem com o Python e tem tema claro/escuro automático e escala HiDPI no Windows. O PyInstaller já tem hook oficial para ele (ver Marco 6). Alternativas descartadas: PySide6/Qt (ótimo, mas acrescenta ~60–100 MB ao `.exe` e a licença LGPL complica o empacotamento) e Tkinter puro (visual datado para um projeto de portfólio).
+- **Três camadas:** `presenter.py` (texto e cores, sem Tk), `worker.py` (thread do diagnóstico que fala com a tela por uma fila) e `app.py` (só widgets). O Tk só é tocado pela thread principal: a janela lê a fila a cada 100 ms com `after()`. As duas primeiras camadas têm testes, sem abrir janela.
+- **Progresso real por etapa.** O runner ganhou `on_done(resultado)`, além de `on_progress(nome)`, e a tela marca ✔ em cada teste conforme termina, em vez de só uma mensagem genérica.
+- **"Copiar resumo" não leva dados da rede.** Leva só o texto da explicação, os códigos e a data, para colar no WhatsApp ou e-mail (testado). O nome do Wi-Fi e os endereços ficam no relatório salvo, que o usuário escolhe enviar.
+- **"Salvar relatório"** grava o HTML (para pessoas) e um `.json` com o mesmo nome (para o suporte).
+- **Verificado com `pythonw.exe`** (sem console, igual ao `.exe --windowed`): a janela abre, diagnostica, mostra o resultado e copia o resumo. `_ensure_std_streams()` cobre `sys.stdout`/`stderr` vazios (`None`).
+- **Fora deste marco:** o botão de teste de velocidade. A fonte do teste ainda está em aberto na especificação (termos de uso de cada serviço). O botão "Enviar ao suporte" fica para depois; na v1 é salvar/copiar.
+
 ## Empacotamento (Marco 6)
 
 - **CustomTkinter + PyInstaller:** o wiki do CustomTkinter manda usar `--onedir` com `--add-data` manual. **Isso está desatualizado.** O `pyinstaller-hooks-contrib` hoje inclui `hook-customtkinter.py`, que coleta sozinho os dados da biblioteca (`collect_data_files("customtkinter")`). Então `--onefile --windowed` deve funcionar sem `--add-data`. Validar no build real.
