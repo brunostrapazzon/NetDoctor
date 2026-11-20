@@ -22,6 +22,42 @@ class ErrorCode(StrEnum):
 SENSITIVE_FIELDS = frozenset({"interface", "ipv4", "gateway", "dns_servers", "server", "host"})
 
 
+class Severity(StrEnum):
+    CRITICAL = "critical"  # sem internet ou sem navegar
+    WARNING = "warning"  # funciona, mas mal
+    INFO = "info"
+
+
+@dataclass
+class Finding:
+    """Um achado do motor de regras. `evidence` traz os números que o justificam."""
+
+    code: str
+    severity: Severity
+    action: str
+    evidence: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass
+class Diagnosis:
+    """Achados em ordem de cadeia. O principal é o primeiro."""
+
+    findings: list[Finding]
+
+    @property
+    def primary(self) -> Finding:
+        return self.findings[0]
+
+    def codes(self) -> list[str]:
+        return [f.code for f in self.findings]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"primary": self.primary.code, "findings": [f.to_dict() for f in self.findings]}
+
+
 @dataclass
 class ProbeResult:
     """Fatos brutos de uma probe. `ok=False` significa "não deu para medir"."""

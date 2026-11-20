@@ -26,6 +26,9 @@ netdoctor = "netdoctor.cli:main"
 [tool.setuptools.packages.find]
 include = ["netdoctor*"]
 
+[tool.setuptools.package-data]
+netdoctor = ["core/*.toml"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 

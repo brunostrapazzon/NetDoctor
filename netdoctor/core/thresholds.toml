@@ -1,0 +1,18 @@
+# Limiares do motor de regras (netdoctor/core/rules.py).
+# Valores iniciais escolhidos com base na experiência de suporte. Ajustar com dados reais.
+
+[wifi]
+# "Sinal" do `netsh wlan` é um percentual que o Windows calcula de forma
+# aproximadamente linear entre -100 dBm (0%) e -50 dBm (100%).
+# 50% ≈ -75 dBm: abaixo disso vídeo e chamada começam a falhar e a velocidade cai bastante.
+weak_signal_pct = 50
+
+[gateway]
+# Na rede local a perda esperada é 0%. Com 4 pings cada pacote perdido vale 25%,
+# então 20% dispara já com 1 perda em 4. Perda até o roteador nunca é normal.
+high_loss_pct = 20
+
+# Até o roteador: cabo fica < 2 ms e Wi-Fi saudável < 10 ms. O economizador de
+# energia do Wi-Fi gera picos isolados, por isso a média e uma margem generosa.
+# Média ≥ 50 ms indica interferência, canal congestionado ou roteador sobrecarregado.
+high_avg_rtt_ms = 50

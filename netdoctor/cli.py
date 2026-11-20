@@ -11,7 +11,8 @@ from pathlib import Path
 from typing import Any
 
 from netdoctor import __version__
-from netdoctor.core.models import ProbeResult
+from netdoctor.core.models import Diagnosis, ProbeResult
+from netdoctor.core.rules import diagnose
 from netdoctor.core.runner import run_all
 
 _PROGRESS = {
@@ -22,14 +23,24 @@ _PROGRESS = {
 }
 
 
-def build_report(results: list[ProbeResult]) -> dict[str, Any]:
+def build_report(results: list[ProbeResult], diagnosis: Diagnosis) -> dict[str, Any]:
     return {
         "tool": "netdoctor",
         "version": __version__,
         "generated_at": datetime.now(UTC).isoformat(timespec="seconds"),
         "os": {"system": platform.system(), "release": platform.release()},
+        "diagnosis": diagnosis.to_dict(),
         "probes": [r.to_dict() for r in results],
     }
+
+
+def format_diagnosis(diagnosis: Diagnosis) -> str:
+    """Códigos técnicos. O texto para leigos (templates pt-BR) chega no Marco 3."""
+    p = diagnosis.primary
+    lines = [f"Diagnóstico: {p.code} ({p.severity}) -> ação {p.action}"]
+    for extra in diagnosis.findings[1:]:
+        lines.append(f"  também: {extra.code} ({extra.severity}) -> ação {extra.action}")
+    return "\n".join(lines)
 
 
 def _fmt_ping(target: dict[str, Any]) -> str:
@@ -86,13 +97,16 @@ def _progress(name: str) -> None:
 
 def cmd_diagnose(args: argparse.Namespace) -> int:
     results = run_all(on_progress=None if args.json else _progress)
-    report = build_report(results)
+    diagnosis = diagnose(results)
+    report = build_report(results, diagnosis)
     text = json.dumps(report, ensure_ascii=False, indent=2)
     if args.output:
         Path(args.output).write_text(text, encoding="utf-8")
     if args.json:
         print(text)
     else:
+        print(format_diagnosis(diagnosis))
+        print()
         print(format_summary(results))
         if args.output:
             print(f"\nRelatório salvo em {args.output}")

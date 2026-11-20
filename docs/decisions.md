@@ -12,6 +12,20 @@ Fatos confirmados na documentação oficial em 2026-11-20. Rever antes dos marco
 - **Falha de probe ≠ fato negativo.** `ok=False` quer dizer "não deu para medir". O runner isola exceções e travamentos (timeout global de 30 s).
 - **Ambiente:** `venv` + `pip` com `pyproject.toml`, porque o `uv` não está instalado na máquina. Dá para migrar para `uv` depois sem mudar o código. Venv em Python 3.12 por compatibilidade com o PyInstaller; o código suporta 3.11+.
 
+## Marco 2: motor de regras
+
+- **Regras puras sobre `Facts`.** `Facts.from_results` só aceita probes com `ok=True`. O que não foi medido vira `None` e nenhuma regra dispara por falta de dado.
+- **Todas as regras rodam e o principal é o primeiro da cadeia.** As pré-condições impedem achados redundantes (ex.: com o gateway fora, `ISP_DOWN` não dispara). Achados de qualidade continuam aparecendo junto (`GATEWAY_DOWN` + `WIFI_WEAK`).
+- **Desvios da tabela da especificação, todos com teste:**
+  - `INCONCLUSIVE` (novo): quando `adapter`, `ping` ou `http` não mediu, não dá para afirmar `ALL_OK`.
+  - `GATEWAY_DOWN` não dispara se a internet responde (alguns roteadores bloqueiam ping). Também dispara quando há IP válido mas nenhuma rota padrão.
+  - `ISP_DOWN` exige que ping público **e** HTTPS falhem **e** que o NCSI não tenha recebido nenhuma resposta HTTP. Assim o portal cativo que bloqueia ping não é confundido com queda da operadora, mesmo vindo antes na cadeia.
+  - `DNS_FAIL` só dispara se algum DNS público resolve. Também cobre o caso "nenhum DNS configurado".
+  - `CAPTIVE_PORTAL`: redirecionamento ou conteúdo diferente no NCSI, ou erro de TLS no HTTPS (interceptação).
+- **Limiares** em `netdoctor/core/thresholds.toml` (Wi-Fi fraco < 50%, perda no gateway ≥ 20%, média até o gateway ≥ 50 ms), com a justificativa em comentário. O arquivo vai como package data; no Marco 6 o PyInstaller precisa incluí-lo.
+- **Ações** são códigos (`RESTART_ROUTER`, `CALL_ISP`...). O texto para leigos fica nos templates do Marco 3.
+- `WIFI_WEAK` já está implementado e testado, mas só dispara de verdade quando a probe `wifi` existir (Marco 3).
+
 ## Empacotamento (Marco 6)
 
 - **CustomTkinter + PyInstaller:** o wiki do CustomTkinter manda usar `--onedir` com `--add-data` manual. **Isso está desatualizado.** O `pyinstaller-hooks-contrib` hoje inclui `hook-customtkinter.py`, que coleta sozinho os dados da biblioteca (`collect_data_files("customtkinter")`). Então `--onefile --windowed` deve funcionar sem `--add-data`. Validar no build real.
