@@ -5,8 +5,9 @@ from datetime import datetime
 
 from netdoctor.core.models import ProbeResult
 from netdoctor.core.runner import run_all
+from netdoctor.pipeline import run_pipeline
 from netdoctor.ui.presenter import copy_summary, default_report_name, progress_text, result_view
-from netdoctor.ui.worker import DiagnosisWorker, run_pipeline
+from netdoctor.ui.worker import DiagnosisWorker
 
 EXPLANATION = {
     "code": "WIFI_WEAK",
@@ -82,7 +83,7 @@ def _fake_runner(on_progress=None, on_done=None):
 
 def test_pipeline_builds_full_report():
     steps = []
-    report = run_pipeline(steps.append, runner=_fake_runner)
+    report = run_pipeline(steps.append, runner=_fake_runner, llm_config=None).report
     assert steps == ["adapter", "ping"]
     assert report["diagnosis"]["primary"] == "INCONCLUSIVE"
     assert report["explanation"]["headline"]
@@ -100,7 +101,7 @@ def _wait_for(worker, kind, timeout=3.0):
 
 
 def test_worker_emits_progress_finished_and_done():
-    worker = DiagnosisWorker(runner=_fake_runner)
+    worker = DiagnosisWorker(runner=_fake_runner, llm_config=None)
     assert worker.start()
     events = _wait_for(worker, "done")
     kinds = [e.kind for e in events]
@@ -114,7 +115,7 @@ def test_worker_reports_error_instead_of_hanging():
     def broken(**kwargs):
         raise RuntimeError("boom")
 
-    worker = DiagnosisWorker(runner=broken)
+    worker = DiagnosisWorker(runner=broken, llm_config=None)
     worker.start()
     events = _wait_for(worker, "error")
     assert events[-1].payload == "RuntimeError"
@@ -125,7 +126,7 @@ def test_worker_refuses_second_start_while_running():
         time.sleep(0.3)
         return []
 
-    worker = DiagnosisWorker(runner=slow)
+    worker = DiagnosisWorker(runner=slow, llm_config=None)
     assert worker.start()
     assert worker.start() is False
 

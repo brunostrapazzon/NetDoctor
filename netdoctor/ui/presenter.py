@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
+from netdoctor.explain.templates import AI_DISCLOSURE
+
 PROGRESS_TEXT = {
     "start": "Preparando o diagnóstico…",
     "adapter": "Verificando a conexão do computador…",
@@ -13,6 +15,7 @@ PROGRESS_TEXT = {
     "ping": "Testando o roteador e a internet…",
     "dns": "Testando o acesso aos sites…",
     "http": "Testando o acesso aos sites…",
+    "explain": "Escrevendo a explicação…",
 }
 
 # Ícone + cor por gravidade. As cores são pares (tema claro, tema escuro).
@@ -38,6 +41,8 @@ def result_view(explanation: dict[str, Any]) -> ResultView:
     if explanation["also"]:
         body.append("Também notamos: " + "; ".join(explanation["also"]) + ".")
     body += [f"Obs.: {n}" for n in explanation["notes"]]
+    if explanation.get("source") == "llm":
+        body.append(AI_DISCLOSURE)
     actions = "\n".join(f"{i}. {a}" for i, a in enumerate(explanation["actions"], 1))
     return ResultView(icon, color, explanation["headline"], "\n".join(body), actions)
 

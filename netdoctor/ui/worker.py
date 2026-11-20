@@ -13,10 +13,8 @@ from dataclasses import dataclass
 from typing import Any
 
 from netdoctor.core.models import ProbeResult
-from netdoctor.core.rules import diagnose
 from netdoctor.core.runner import run_all
-from netdoctor.explain.templates import explain
-from netdoctor.report.json_report import build_report
+from netdoctor.pipeline import AUTO, run_pipeline
 
 
 @dataclass(frozen=True)
@@ -25,21 +23,15 @@ class Event:
     payload: Any = None
 
 
-def run_pipeline(
-    on_progress: Callable[[str], None],
-    on_done: Callable[[ProbeResult], None] | None = None,
-    runner: Callable[..., list[ProbeResult]] = run_all,
-) -> dict[str, Any]:
-    """Probes → regras → explicação → relatório (o mesmo fluxo da CLI)."""
-    results = runner(on_progress=on_progress, on_done=on_done)
-    diagnosis = diagnose(results)
-    return build_report(results, diagnosis, explain(diagnosis, results))
-
-
 class DiagnosisWorker:
-    def __init__(self, runner: Callable[..., list[ProbeResult]] = run_all) -> None:
+    def __init__(
+        self,
+        runner: Callable[..., list[ProbeResult]] = run_all,
+        llm_config: Any = AUTO,
+    ) -> None:
         self.events: queue.Queue[Event] = queue.Queue()
         self._runner = runner
+        self._llm_config = llm_config
         self._thread: threading.Thread | None = None
 
     @property
@@ -56,15 +48,16 @@ class DiagnosisWorker:
     def _run(self) -> None:
         self.events.put(Event("progress", "start"))
         try:
-            report = run_pipeline(
+            result = run_pipeline(
                 lambda step: self.events.put(Event("progress", step)),
-                lambda result: self.events.put(Event("finished", result.name)),
+                lambda probe: self.events.put(Event("finished", probe.name)),
                 runner=self._runner,
+                llm_config=self._llm_config,
             )
         except Exception as exc:  # a janela nunca pode ficar travada em "testando"
             self.events.put(Event("error", type(exc).__name__))
         else:
-            self.events.put(Event("done", report))
+            self.events.put(Event("done", result.report))
 
     def drain(self) -> list[Event]:
         out = []

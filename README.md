@@ -2,7 +2,7 @@
 
 Diagnóstico de internet para Windows que explica a causa do problema em português simples.
 
-> **Status:** Marco 4 de 7: interface gráfica do Modo Cliente, testes de rede (incluindo Wi-Fi), regras de diagnóstico, explicação em português simples e relatórios JSON/HTML. Ainda sem `.exe` (roda a partir do código-fonte).
+> **Status:** Marco 5 de 7: interface gráfica do Modo Cliente, testes de rede (incluindo Wi-Fi), regras de diagnóstico, explicação em português simples (offline, com IA opcional) e relatórios JSON/HTML. Ainda sem `.exe` (roda a partir do código-fonte).
 
 | Testando | Resultado (tema claro) | Resultado (tema escuro) |
 |---|---|---|
@@ -25,7 +25,20 @@ py -3.12 -m venv .venv
 .venv\Scripts\netdoctor diagnose --json           # relatório JSON completo
 .venv\Scripts\netdoctor diagnose -o rel.json      # salva o relatório JSON
 .venv\Scripts\netdoctor diagnose --html rel.html  # salva o relatório HTML para o suporte
+.venv\Scripts\netdoctor diagnose --sem-ia         # ignora a IA mesmo se configurada
 ```
+
+### IA opcional
+
+Tudo funciona sem IA. Para que uma IA reescreva a explicação de forma mais natural, copie [`.env.example`](.env.example) para `.env` e preencha:
+
+```ini
+NETDOCTOR_LLM_PROVIDER=groq        # groq | openai | ollama | none
+NETDOCTOR_LLM_MODEL=<modelo>       # confira os disponíveis no console do provedor
+NETDOCTOR_LLM_API_KEY=<sua chave>  # não precisa para Ollama local
+```
+
+Se a IA falhar por qualquer motivo (sem chave, sem internet, demora, resposta estranha), o NetDoctor usa o texto offline sem mostrar erro.
 
 Exemplo de saída:
 
@@ -101,13 +114,16 @@ O diagnóstico roda numa thread separada e conversa com a janela por uma fila, e
 
 ### Por que a IA não decide o diagnóstico
 
-O diagnóstico vem de regras fixas e testadas. A IA (opcional, Marco 5) só reescreve em linguagem simples um resultado que já foi decidido. Assim o resultado é reproduzível, funciona sem internet (justamente quando o usuário mais precisa) e não depende do humor de um modelo.
+O diagnóstico vem de regras fixas e testadas. A IA (opcional) só reescreve em linguagem simples um resultado que já foi decidido: ela recebe o código do achado e o texto offline como base, e devolve uma frase e de 1 a 3 ações, que são validadas antes de aparecer. Assim o resultado é reproduzível, funciona sem internet (justamente quando o usuário mais precisa) e não depende do humor de um modelo. Quando a IA reescreve, a tela avisa.
+
+Provedores suportados: Groq, OpenAI e Ollama local, todos pela API compatível com a da OpenAI, sem SDK. Trocar de provedor é só configuração. Sem internet, o provedor na nuvem nem é chamado; o Ollama local continua funcionando.
 
 ## Privacidade
 
 - O relatório fica só no seu computador. Ele contém o nome do Wi-Fi e endereços locais; envie apenas ao suporte em quem você confia.
 - Endereços contatados pelos testes: o seu roteador, os servidores DNS configurados, `1.1.1.1` e `8.8.8.8` (ping e DNS), `www.msftconnecttest.com` (o mesmo teste que o próprio Windows faz) e `www.google.com/generate_204`.
-- Nada é enviado para a IA nesta versão. Quando ela entrar, vai receber só os códigos e números do diagnóstico, nunca nome da rede, MAC, IP ou nome do computador.
+- **IA desligada por padrão.** Se você configurar uma, ela recebe só: o código do achado (ex.: `WIFI_WEAK`), a gravidade, o tipo de conexão (Wi-Fi/cabo), números (sinal %, perda %, tempo em ms) e o texto offline como base. **Nunca** nome da rede, MAC, endereços IP, nome do computador ou do adaptador. Isso é garantido por uma lista fechada de campos permitidos e por testes. Também foi conferido de ponta a ponta com os dados reais de uma máquina.
+- A chave da IA fica só no seu `.env`, que não vai para o repositório.
 
 ## Desenvolvimento
 
@@ -131,7 +147,7 @@ Os testes usam saídas reais (anonimizadas) dos comandos em `tests/fixtures/` e 
 2. ✅ Regras de diagnóstico + testes PT/EN
 3. ✅ Wi-Fi, explicações offline, relatórios JSON e HTML
 4. ✅ Interface do Modo Cliente
-5. IA opcional com fallback
+5. ✅ IA opcional com fallback
 6. `.exe` via PyInstaller + GitHub Actions
 7. Modo Técnico
 
@@ -139,7 +155,7 @@ Os testes usam saídas reais (anonimizadas) dos comandos em `tests/fixtures/` e 
 
 ## English summary
 
-NetDoctor is a Windows tool that diagnoses home/office internet problems and explains the cause in plain Portuguese. It grew out of three years of ISP field support, where most "my internet is down" tickets turn out to be weak Wi-Fi, a stuck router or DNS. Diagnosis comes from deterministic, tested rules. An optional LLM only rewrites the already-decided result, and everything works offline. Current status: milestone 4 (CustomTkinter one-click client UI on top of probes incl. Wi-Fi signal, a deterministic rule engine, offline Portuguese explanations and self-contained JSON/HTML reports; CLI also available).
+NetDoctor is a Windows tool that diagnoses home/office internet problems and explains the cause in plain Portuguese. It grew out of three years of ISP field support, where most "my internet is down" tickets turn out to be weak Wi-Fi, a stuck router or DNS. Diagnosis comes from deterministic, tested rules. An optional LLM only rewrites the already-decided result, and everything works offline. Current status: milestone 5 (CustomTkinter one-click client UI on top of probes incl. Wi-Fi signal, a deterministic rule engine, offline Portuguese explanations with an optional LLM rewrite (Groq/OpenAI/Ollama via the OpenAI-compatible API, allowlist-only payload, silent fallback) and self-contained JSON/HTML reports; CLI also available).
 
 ## Licença
 

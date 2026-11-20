@@ -93,7 +93,7 @@ def _fake_results():
 
 
 def test_diagnose_json_is_valid(monkeypatch, capsys):
-    monkeypatch.setattr(cli, "run_all", lambda on_progress=None: _fake_results())
+    monkeypatch.setattr(cli, "run_all", lambda **kwargs: _fake_results())
     assert cli.main(["diagnose", "--json"]) == 0
     report = json.loads(capsys.readouterr().out)
     assert report["tool"] == "netdoctor"
@@ -101,7 +101,7 @@ def test_diagnose_json_is_valid(monkeypatch, capsys):
 
 
 def test_diagnose_summary_and_output_file(monkeypatch, capsys, tmp_path):
-    monkeypatch.setattr(cli, "run_all", lambda on_progress=None: _fake_results())
+    monkeypatch.setattr(cli, "run_all", lambda **kwargs: _fake_results())
     out_file = tmp_path / "relatorio.json"
     assert cli.main(["diagnose", "-o", str(out_file)]) == 0
     text = capsys.readouterr().out

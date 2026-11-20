@@ -14,6 +14,7 @@ from typing import Any
 
 from netdoctor.core.models import Diagnosis, Finding, ProbeResult
 
+AI_DISCLOSURE = "Texto reescrito por IA a partir do diagnóstico automático."
 SEND_REPORT = "Se continuar, salve o relatório e envie ao suporte técnico."
 
 
@@ -168,6 +169,9 @@ class Explanation:
         if self.notes:
             lines.append("")
             lines += [f"Obs.: {n}" for n in self.notes]
+        if self.source == "llm":
+            lines.append("")
+            lines.append(AI_DISCLOSURE)
         return "\n".join(lines)
 
 

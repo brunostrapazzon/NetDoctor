@@ -45,6 +45,18 @@ Fatos confirmados na documentação oficial em 2026-11-20. Rever antes dos marco
 - **Verificado com `pythonw.exe`** (sem console, igual ao `.exe --windowed`): a janela abre, diagnostica, mostra o resultado e copia o resumo. `_ensure_std_streams()` cobre `sys.stdout`/`stderr` vazios (`None`).
 - **Fora deste marco:** o botão de teste de velocidade. A fonte do teste ainda está em aberto na especificação (termos de uso de cada serviço). O botão "Enviar ao suporte" fica para depois; na v1 é salvar/copiar.
 
+## Marco 5: IA opcional
+
+- **Sem SDK, só `urllib`.** Groq, OpenAI e Ollama aceitam `POST {base_url}/chat/completions` no formato da OpenAI (conferido na documentação oficial: base da Groq `https://api.groq.com/openai/v1`; Ollama `http://localhost:11434/v1`, que aceita `response_format` `json_object` e ignora a chave). Assim o `.exe` não ganha dependência nova e a troca de provedor é só configuração. O limite de tokens não é enviado: Groq e OpenAI preferem `max_completion_tokens`, o Ollama usa `max_tokens`, e a resposta já é curta pelo prompt.
+- **Privacidade por allowlist, não por denylist.** `build_llm_payload` monta o JSON só com código, gravidade, tipo de conexão (`wifi`/`ethernet`), uma lista fechada de campos de evidência (sinal %, perda %, ms, códigos de erro) e o texto do template como base. Um campo novo com identificador **não vaza por esquecimento**. Testado com todos os identificadores preenchidos (SSID, BSSID, MAC, IPs, hostname, host do portal, nome do adaptador) e verificado de ponta a ponta com um servidor falso local e os dados reais desta máquina: 7 identificadores reais checados, nenhum enviado.
+- **A IA só reescreve.** Recebe o diagnóstico decidido e o texto do template; devolve `{"headline", "actions"}`. O detalhe, os números, "Também notamos" e as observações continuam vindo do template. A resposta é validada (frase não vazia, 1–3 ações, até 220 caracteres) e qualquer desvio cai no template.
+- **Fallback silencioso.** Sem configuração, chave ausente, HTTP 401/429, timeout (padrão 8 s), sem rede, JSON inválido → template. O usuário nunca vê erro de IA. Com IA configurada mas inalcançável, o diagnóstico só demora até o timeout.
+- **Sem internet, sem chamada à nuvem.** Se o achado principal é de "sem internet" (`NO_LINK` … `CAPTIVE_PORTAL`), o provedor na nuvem nem é chamado (seria só esperar o timeout). Um Ollama local continua sendo usado.
+- **Transparência.** Quando a IA reescreve, a tela, o texto da CLI e o HTML mostram "Texto reescrito por IA a partir do diagnóstico automático." O JSON registra `explanation.source = "llm"`.
+- **Configuração:** variáveis `NETDOCTOR_LLM_*`, que têm prioridade, ou um `.env` na pasta atual ou em `%APPDATA%\NetDoctor\.env` (onde o `.exe` vai procurar). Leitor de `.env` próprio, sem `python-dotenv`. `.env.example` vem com `PROVIDER=none` e é o único commitado. `--sem-ia` na CLI desliga a IA.
+- **Fluxo único** em `netdoctor/pipeline.py`, usado pela CLI e pela interface (antes estava duplicado).
+- **Não verificado:** chamada a um provedor real (Groq/OpenAI/Ollama), porque não há chave nesta máquina. A lista de modelos da Groq muda; o modelo fica só no `.env`.
+
 ## Empacotamento (Marco 6)
 
 - **CustomTkinter + PyInstaller:** o wiki do CustomTkinter manda usar `--onedir` com `--add-data` manual. **Isso está desatualizado.** O `pyinstaller-hooks-contrib` hoje inclui `hook-customtkinter.py`, que coleta sozinho os dados da biblioteca (`collect_data_files("customtkinter")`). Então `--onefile --windowed` deve funcionar sem `--add-data`. Validar no build real.

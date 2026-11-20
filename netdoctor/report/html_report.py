@@ -12,6 +12,8 @@ from html import escape
 from pathlib import Path
 from typing import Any
 
+from netdoctor.explain.templates import AI_DISCLOSURE
+
 SEVERITY_LABEL = {"critical": "Problema", "warning": "Atenção", "info": "Normal"}
 PROBE_TITLE = {
     "adapter": "Conexão do computador",
@@ -146,6 +148,8 @@ def render_html(report: dict[str, Any]) -> str:
     )
     actions = "".join(f"<li>{_e(a)}</li>" for a in ex["actions"])
     notes = "".join(f'<p class="muted">Obs.: {_e(n)}</p>' for n in ex["notes"])
+    if ex.get("source") == "llm":
+        notes += f'<p class="muted">{_e(AI_DISCLOSURE)}</p>'
 
     findings = _table(
         ["Código", "Gravidade", "Ação", "Evidência"],

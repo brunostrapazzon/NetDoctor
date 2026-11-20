@@ -9,11 +9,10 @@ from typing import Any
 
 from netdoctor import __version__
 from netdoctor.core.models import Diagnosis, ProbeResult
-from netdoctor.core.rules import diagnose
 from netdoctor.core.runner import run_all
-from netdoctor.explain.templates import explain
+from netdoctor.pipeline import AUTO, run_pipeline
 from netdoctor.report.html_report import write_html
-from netdoctor.report.json_report import build_report, to_json, write_json
+from netdoctor.report.json_report import to_json, write_json
 
 _PROGRESS = {
     "adapter": "Verificando a conexão do computador…",
@@ -21,6 +20,7 @@ _PROGRESS = {
     "ping": "Testando o roteador e a internet…",
     "dns": "Testando a tradução de nomes (DNS)…",
     "http": "Testando o acesso a sites…",
+    "explain": "Escrevendo a explicação…",
 }
 
 
@@ -95,10 +95,17 @@ def _progress(name: str) -> None:
 
 
 def cmd_diagnose(args: argparse.Namespace) -> int:
-    results = run_all(on_progress=None if args.json else _progress)
-    diagnosis = diagnose(results)
-    explanation = explain(diagnosis, results)
-    report = build_report(results, diagnosis, explanation)
+    outcome = run_pipeline(
+        on_progress=None if args.json else _progress,
+        runner=run_all,
+        llm_config=None if args.no_ai else AUTO,
+    )
+    results, diagnosis, explanation, report = (
+        outcome.results,
+        outcome.diagnosis,
+        outcome.explanation,
+        outcome.report,
+    )
 
     saved = []
     if args.output:
@@ -127,6 +134,12 @@ def build_parser() -> argparse.ArgumentParser:
     diag.add_argument("--json", action="store_true", help="Saída em JSON.")
     diag.add_argument("--output", "-o", metavar="ARQUIVO", help="Salva o relatório JSON.")
     diag.add_argument("--html", metavar="ARQUIVO", help="Salva o relatório técnico HTML.")
+    diag.add_argument(
+        "--sem-ia",
+        dest="no_ai",
+        action="store_true",
+        help="Não usa IA mesmo se configurada (só explicações offline).",
+    )
     diag.set_defaults(func=cmd_diagnose)
     return parser
 
