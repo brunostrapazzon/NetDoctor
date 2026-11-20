@@ -1,0 +1,12 @@
+
+Disparando 1.1.1.1 com 32 bytes de dados:
+Resposta de 1.1.1.1: bytes=32 tempo=18ms TTL=57
+Resposta de 1.1.1.1: bytes=32 tempo=19ms TTL=57
+Resposta de 1.1.1.1: bytes=32 tempo=18ms TTL=57
+Resposta de 1.1.1.1: bytes=32 tempo=21ms TTL=57
+
+Estatísticas do Ping para 1.1.1.1:
+    Pacotes: Enviados = 4, Recebidos = 4, Perdidos = 0 (0% de
+             perda),
+Aproximar um número redondo de vezes em milissegundos:
+    Mínimo = 18ms, Máximo = 21ms, Média = 19ms

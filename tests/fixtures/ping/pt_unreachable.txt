@@ -1,0 +1,10 @@
+
+Disparando 192.168.0.200 com 32 bytes de dados:
+Resposta de 192.168.0.10: Host de destino inacessível.
+Resposta de 192.168.0.10: Host de destino inacessível.
+Resposta de 192.168.0.10: Host de destino inacessível.
+Resposta de 192.168.0.10: Host de destino inacessível.
+
+Estatísticas do Ping para 192.168.0.200:
+    Pacotes: Enviados = 4, Recebidos = 4, Perdidos = 0 (0% de
+             perda),

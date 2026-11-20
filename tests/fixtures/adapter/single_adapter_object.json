@@ -1,0 +1,1 @@
+{"adapters":{"name":"Wi-Fi","index":15,"status":"Up","media":"Native 802.11","hardware":true,"virtual":false},"addresses":{"index":15,"ip":"192.168.0.10","prefix":24},"routes":{"index":15,"gateway":"192.168.0.1","metric":35},"dns":{"index":15,"servers":"192.168.0.1"}}
