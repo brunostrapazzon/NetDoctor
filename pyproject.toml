@@ -20,6 +20,9 @@ dev = [
     "pytest>=8",
     "ruff>=0.6",
 ]
+build = [
+    "pyinstaller==6.22.3",
+]
 
 [project.scripts]
 netdoctor = "netdoctor.cli:main"
@@ -31,7 +34,7 @@ netdoctor-gui = "netdoctor.ui.app:main"
 include = ["netdoctor*"]
 
 [tool.setuptools.package-data]
-netdoctor = ["core/*.toml"]
+netdoctor = ["core/*.toml", "ui/*.ico"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

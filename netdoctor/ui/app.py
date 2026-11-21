@@ -7,6 +7,7 @@ numa fila e a janela lê a fila a cada 100 ms com `after()`.
 
 from __future__ import annotations
 
+import contextlib
 import os
 import sys
 from datetime import datetime
@@ -22,6 +23,7 @@ from netdoctor.report.json_report import write_json
 from netdoctor.ui.presenter import copy_summary, default_report_name, progress_text, result_view
 from netdoctor.ui.worker import DiagnosisWorker
 
+ICON_PATH = Path(__file__).with_name("netdoctor.ico")
 POLL_MS = 100
 WRAP = 470
 STEPS = (
@@ -42,6 +44,9 @@ class ClientApp(ctk.CTk):
     def __init__(self) -> None:
         super().__init__()
         self.title("NetDoctor")
+        # Chamar iconbitmap aqui impede o CTk de trocar pelo ícone dele (after 200 ms).
+        with contextlib.suppress(Exception):
+            self.iconbitmap(str(ICON_PATH))
         self.geometry("560x520")
         self.minsize(500, 460)
         self.worker = DiagnosisWorker()

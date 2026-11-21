@@ -2,7 +2,7 @@
 
 Diagnóstico de internet para Windows que explica a causa do problema em português simples.
 
-> **Status:** Marco 5 de 7: interface gráfica do Modo Cliente, testes de rede (incluindo Wi-Fi), regras de diagnóstico, explicação em português simples (offline, com IA opcional) e relatórios JSON/HTML. Ainda sem `.exe` (roda a partir do código-fonte).
+> **Status:** Marco 6 de 7: interface gráfica do Modo Cliente, testes de rede (incluindo Wi-Fi), regras de diagnóstico, explicação em português simples (offline, com IA opcional), relatórios JSON/HTML e `.exe` gerado pelo PyInstaller.
 
 | Testando | Resultado (tema claro) | Resultado (tema escuro) |
 |---|---|---|
@@ -11,6 +11,22 @@ Diagnóstico de internet para Windows que explica a causa do problema em portugu
 ## O problema
 
 Trabalho há cerca de 3 anos com suporte de TI e redes num representante de provedor de internet. A maioria dos chamados "minha internet não funciona" é Wi-Fi fraco, roteador travado ou DNS, e não falha da operadora. Só que descobrir isso hoje exige um técnico. O NetDoctor faz essa triagem sozinho e diz ao usuário o que fazer.
+
+## Como baixar e usar
+
+1. Na página de **Releases** do repositório, baixe `NetDoctor.exe`.
+2. Dê dois cliques. Não precisa instalar nada nem ser administrador.
+3. Clique em **Diagnosticar**.
+
+Também há o `netdoctor-cli.exe`, para quem prefere o terminal: `netdoctor-cli.exe diagnose --html relatorio.html`.
+
+**Aviso do Windows (SmartScreen):** o executável não é assinado digitalmente (um certificado custa caro para um projeto pessoal). Na primeira vez o Windows pode mostrar "O Windows protegeu o computador". Clique em **Mais informações** e em **Executar assim mesmo**. Para conferir se o arquivo é o original, compare o hash com o `SHA256SUMS.txt` do release:
+
+```powershell
+Get-FileHash .\NetDoctor.exe -Algorithm SHA256
+```
+
+Para usar a IA opcional com o `.exe`, coloque o `.env` em `%APPDATA%\NetDoctor\.env` (ver [IA opcional](#ia-opcional)).
 
 ## Como usar (a partir do código-fonte)
 
@@ -30,7 +46,7 @@ py -3.12 -m venv .venv
 
 ### IA opcional
 
-Tudo funciona sem IA. Para que uma IA reescreva a explicação de forma mais natural, copie [`.env.example`](.env.example) para `.env` e preencha:
+Tudo funciona sem IA. Para que uma IA reescreva a explicação de forma mais natural, copie [`.env.example`](.env.example) para `.env` (na pasta atual ou em `%APPDATA%\NetDoctor\`) e preencha:
 
 ```ini
 NETDOCTOR_LLM_PROVIDER=groq        # groq | openai | ollama | none
@@ -135,11 +151,24 @@ Provedores suportados: Groq, OpenAI e Ollama local, todos pela API compatível c
 
 Os testes usam saídas reais (anonimizadas) dos comandos em `tests/fixtures/` e não dependem da rede.
 
+### Gerar o `.exe`
+
+```powershell
+.venv\Scripts\pip install -e ".[build]"
+.venv\Scripts\pyinstaller --noconfirm --clean packaging\netdoctor.spec
+```
+
+Saem dois arquivos únicos em `dist\`: `NetDoctor.exe` (interface, sem console, ~13 MB) e `netdoctor-cli.exe` (~9 MB). A receita está em [`packaging/netdoctor.spec`](packaging/netdoctor.spec), com ícone e informações de versão do Windows.
+
+**GitHub Actions:** [`ci.yml`](.github/workflows/ci.yml) roda lint e testes no Windows a cada push. [`release.yml`](.github/workflows/release.yml), ao receber uma tag `vX.Y.Z`, confere se ela bate com a versão do pacote, testa, gera os dois `.exe`, faz um teste rápido do executável e publica o release com o `SHA256SUMS.txt`.
+
 ## Limitações conhecidas
 
 - Os exemplos de saída em inglês (`ping`, `netsh`) e as mensagens de falta de Localização (PT e EN) foram montados a partir do formato conhecido, não capturados. Falta capturar num Windows em inglês e com a Localização desligada.
 - Ainda não foi testado com a rede desligada nem em rede com portal cativo real.
 - A probe `adapter` leva de 3 a 7 s porque o PowerShell precisa carregar os módulos de rede.
+- O `.exe` não é assinado, então o SmartScreen avisa na primeira execução. Como é `--onefile`, ele se extrai numa pasta temporária a cada abertura, o que leva 1 ou 2 segundos.
+- Os workflows do GitHub Actions ainda não rodaram de verdade: o repositório ainda não foi publicado.
 
 ## Roadmap
 
@@ -148,14 +177,14 @@ Os testes usam saídas reais (anonimizadas) dos comandos em `tests/fixtures/` e 
 3. ✅ Wi-Fi, explicações offline, relatórios JSON e HTML
 4. ✅ Interface do Modo Cliente
 5. ✅ IA opcional com fallback
-6. `.exe` via PyInstaller + GitHub Actions
+6. ✅ `.exe` via PyInstaller + GitHub Actions
 7. Modo Técnico
 
 ---
 
 ## English summary
 
-NetDoctor is a Windows tool that diagnoses home/office internet problems and explains the cause in plain Portuguese. It grew out of three years of ISP field support, where most "my internet is down" tickets turn out to be weak Wi-Fi, a stuck router or DNS. Diagnosis comes from deterministic, tested rules. An optional LLM only rewrites the already-decided result, and everything works offline. Current status: milestone 5 (CustomTkinter one-click client UI on top of probes incl. Wi-Fi signal, a deterministic rule engine, offline Portuguese explanations with an optional LLM rewrite (Groq/OpenAI/Ollama via the OpenAI-compatible API, allowlist-only payload, silent fallback) and self-contained JSON/HTML reports; CLI also available).
+NetDoctor is a Windows tool that diagnoses home/office internet problems and explains the cause in plain Portuguese. It grew out of three years of ISP field support, where most "my internet is down" tickets turn out to be weak Wi-Fi, a stuck router or DNS. Diagnosis comes from deterministic, tested rules. An optional LLM only rewrites the already-decided result, and everything works offline. Current status: milestone 6 (single-file `.exe` built with PyInstaller and released by GitHub Actions; CustomTkinter one-click client UI on top of probes incl. Wi-Fi signal, a deterministic rule engine, offline Portuguese explanations with an optional LLM rewrite (Groq/OpenAI/Ollama via the OpenAI-compatible API, allowlist-only payload, silent fallback) and self-contained JSON/HTML reports; CLI also available).
 
 ## Licença
 

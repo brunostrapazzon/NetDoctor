@@ -1,0 +1,64 @@
+name: Release
+
+# Ao enviar uma tag vX.Y.Z (igual a netdoctor.__version__), testa, gera os .exe
+# e publica um release no GitHub com os executáveis e o SHA256SUMS.txt.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Instalar
+        run: python -m pip install -e ".[dev,build]"
+
+      - name: Conferir versão da tag
+        shell: pwsh
+        run: |
+          $v = python -c "import netdoctor; print(netdoctor.__version__)"
+          if ("v$v" -ne "${{ github.ref_name }}") {
+            Write-Error "Tag ${{ github.ref_name }} difere da versão v$v"
+            exit 1
+          }
+
+      - name: Testes
+        run: |
+          ruff check .
+          python -m pytest -q
+
+      - name: Gerar executáveis
+        run: pyinstaller --noconfirm --clean packaging/netdoctor.spec
+
+      - name: Teste de fumaça
+        shell: pwsh
+        run: |
+          dist\netdoctor-cli.exe --help
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
+      - name: SHA256
+        shell: pwsh
+        run: |
+          Get-ChildItem dist\*.exe | ForEach-Object {
+            "$((Get-FileHash $_ -Algorithm SHA256).Hash.ToLower())  $($_.Name)"
+          } | Set-Content dist\SHA256SUMS.txt -Encoding ascii
+          Get-Content dist\SHA256SUMS.txt
+
+      - name: Publicar release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >
+          gh release create "${{ github.ref_name }}"
+          dist/NetDoctor.exe dist/netdoctor-cli.exe dist/SHA256SUMS.txt
+          --title "NetDoctor ${{ github.ref_name }}"
+          --generate-notes

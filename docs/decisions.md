@@ -66,6 +66,31 @@ Fatos confirmados na documentação oficial em 2026-11-20. Rever antes dos marco
   - Nos `subprocess`, redirecionar todas as streams (`stdin=DEVNULL`, `capture_output=True`) e usar `CREATE_NO_WINDOW`.
 - Versão de referência consultada: PyInstaller v6.22.3.
 
+### O que foi feito e verificado no build real
+
+- **PyInstaller 6.22.3 fixo** (extra `build`), com `pyinstaller-hooks-contrib` 2026.10. O hook do customtkinter funcionou: `--onefile` sem `--add-data`, e o dnspython também tem hook.
+- **Dois executáveis de arquivo único** a partir de [`packaging/netdoctor.spec`](../packaging/netdoctor.spec): `NetDoctor.exe` (interface, `console=False`, 12,9 MB) e `netdoctor-cli.exe` (console, 9,4 MB). O `.spec` é commitado (o `.gitignore` ignora só `build/` e `dist/`).
+  - `onefile`, e não `onedir`, porque o público é leigo: um arquivo para baixar e clicar.
+  - `onedir` abriria mais rápido, mas exige descompactar uma pasta.
+- **Dados do pacote** entram por `collect_data_files("netdoctor")`: `core/thresholds.toml`, lido com `importlib.resources`, e `ui/netdoctor.ico`. Eles também estão no `package-data` do `pyproject.toml`, para a instalação via pip funcionar igual. Há um teste que garante isso.
+- **Ícone** gerado por script (`packaging/make_icon.py`, Pillow só na hora de gerar), aplicado ao `.exe` e à janela. A janela chama `iconbitmap` no `__init__`, porque o CTk 6.0.0 troca pelo ícone dele após 200 ms se ninguém chamou antes. Conferi isso no código instalado (`ctk_tk.py`).
+- **Informações de versão do Windows** (Propriedades > Detalhes) montadas no `.spec` com `VSVersionInfo`, a partir de `netdoctor.__version__`. Por isso a versão precisa ser `X.Y.Z` (há teste).
+- **Sem UPX:** compactar o `.exe` com UPX aumenta os falsos positivos de antivírus.
+- **Exclusões** (`pytest`, `PIL`, `numpy`, `unittest`…) para o `.exe` não levar o que só serve ao desenvolvimento.
+- **Sem assinatura digital.** Um certificado de assinatura de código custa caro para um projeto pessoal. O README explica o aviso do SmartScreen e o release publica `SHA256SUMS.txt` para conferir o arquivo.
+- **GitHub Actions:**
+  - `ci.yml` roda lint e testes em `windows-latest` a cada push ou PR.
+  - `release.yml` dispara com a tag `v*`. Ele confere se a tag bate com `__version__`, testa, gera os `.exe`, roda `netdoctor-cli.exe --help` como teste rápido e publica com `gh release create` (o `gh` vem no runner; o token é o `GITHUB_TOKEN`, com `contents: write`). Não usa action de terceiros para publicar.
+- **Verificado nesta máquina:**
+  - `netdoctor-cli.exe diagnose --sem-ia --html … -o …` levou 11 s.
+  - As 5 probes deram ok, o diagnóstico foi ALL_OK, os limiares foram lidos de dentro do `.exe` e o HTML e o JSON foram gravados.
+  - Nas propriedades do arquivo aparecem a descrição, a versão e o copyright.
+  - `NetDoctor.exe` abre a janela com o ícone novo.
+- **Não verificado:**
+  - O clique em Diagnosticar dentro do `NetDoctor.exe`: o teste da janela fica com o Bruno.
+  - Os workflows rodando no GitHub (repositório ainda não publicado).
+  - O aviso do SmartScreen num computador limpo.
+
 ## IA (Marco 5)
 
 - **Groq:** API compatível com OpenAI em `https://api.groq.com/openai/v1`. Dá para usar o SDK `openai` com `base_url` trocada, o que facilita trocar de provedor (Groq/OpenAI/Ollama).
