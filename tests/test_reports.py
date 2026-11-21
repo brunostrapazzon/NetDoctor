@@ -141,3 +141,35 @@ def test_html_shows_failed_probe():
     results[3] = ProbeResult("dns", ok=False, error="TIMEOUT")
     html = render_html(_report(results))
     assert "Não foi possível medir" in html
+
+
+def test_html_is_accessible_and_readable_on_phones():
+    html = render_html(_report(_results()))
+    assert 'name="viewport"' in html
+    assert "prefers-color-scheme:dark" in html
+    assert "prefers-reduced-motion" in html  # a única transição respeita o pedido do sistema
+    assert "transition:all" not in html
+    assert ":focus-visible" in html
+    assert '<th scope="col">Gravidade</th>' in html
+    assert 'role="region" aria-label="Achados" tabindex="0"' in html  # tabela rola pelo teclado
+    # Gravidade com ícone e texto, não só cor.
+    assert '<span aria-hidden="true">⚠</span>Atenção' in html
+    # Sumário com âncoras para cada seção que existe.
+    for anchor in ("resultado", "achados", "probe-wifi", "probe-http", "dados"):
+        assert f'href="#{anchor}"' in html and f'id="{anchor}"' in html
+    assert 'href="#laudo"' not in html  # sem Modo Técnico, sem laudo
+    assert '<time datetime="2026-11-20T12:00:00+00:00">20/11/2026 às 12:00 (UTC)</time>' in html
+
+
+def test_html_numbers_are_right_aligned():
+    html = render_html(_report(_results()))
+    assert '<th scope="col" class="num">Média (ms)</th>' in html
+    assert '<td class="num">19.0</td>' in html
+
+
+def test_html_evidence_is_escaped():
+    report = _report(_results())
+    report["diagnosis"]["findings"][0]["evidence"] = {"<b>": "<i>x</i>"}
+    html = render_html(report)
+    assert "<b>" not in html.split("<pre")[0]
+    assert "<code>&lt;b&gt;: &lt;i&gt;x&lt;/i&gt;</code>" in html

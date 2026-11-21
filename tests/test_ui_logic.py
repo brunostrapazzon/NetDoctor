@@ -1,12 +1,23 @@
 """Lógica da interface sem abrir janela: textos, resumo copiado e thread do diagnóstico."""
 
+import re
 import time
 from datetime import datetime
 
 from netdoctor.core.models import ProbeResult
 from netdoctor.core.runner import run_all
 from netdoctor.pipeline import run_pipeline
-from netdoctor.ui.presenter import copy_summary, default_report_name, progress_text, result_view
+from netdoctor.ui import presenter
+from netdoctor.ui.presenter import (
+    PALETTE,
+    badge_text,
+    copy_summary,
+    default_report_name,
+    progress_fraction,
+    progress_text,
+    result_view,
+    step_line,
+)
 from netdoctor.ui.worker import DiagnosisWorker
 
 EXPLANATION = {
@@ -47,6 +58,45 @@ def test_result_view_warning():
 def test_result_view_ok_and_critical_icons():
     assert result_view({**EXPLANATION, "severity": "info"}).icon == "✔"
     assert result_view({**EXPLANATION, "severity": "critical"}).icon == "✖"
+
+
+def test_result_view_badge_never_depends_on_color_alone():
+    assert badge_text(result_view(EXPLANATION)) == "⚠  Atenção"
+    assert badge_text(result_view({**EXPLANATION, "severity": "info"})) == "✔  Normal"
+    assert badge_text(result_view({**EXPLANATION, "severity": "critical"})) == "✖  Problema"
+    unknown = result_view({**EXPLANATION, "severity": "???"})
+    assert (unknown.icon, unknown.label) == ("⚠", "Atenção")
+
+
+def test_every_color_has_light_and_dark_variant():
+    hex_color = re.compile(r"^#[0-9a-f]{6}$")
+    for name, pair in PALETTE.items():
+        assert len(pair) == 2 and all(hex_color.match(c) for c in pair), name
+        assert pair[0] != pair[1] or name.endswith("text"), name
+
+
+def test_step_lines_mark_progress():
+    assert step_line("Sinal do Wi-Fi", "pending") == ("○  Sinal do Wi-Fi", PALETTE["muted"])
+    assert step_line("Sinal do Wi-Fi", "running")[0] == "…  Sinal do Wi-Fi"
+    assert step_line("Sinal do Wi-Fi", "done") == ("✔  Sinal do Wi-Fi", PALETTE["ok"])
+
+
+def test_progress_fraction_is_clamped():
+    assert progress_fraction(2, 5) == 0.4
+    assert progress_fraction(7, 5) == 1.0
+    assert progress_fraction(1, 0) == 0.0
+
+
+def test_window_microcopy_has_no_jargon():
+    jargon = re.compile(
+        r"(gateway|dns|dhcp|ip|ping|lat[eê]ncia|icmp|tcp|udp|ssid|https?|apipa|isp)",
+        re.IGNORECASE,
+    )
+    texts = [v for k, v in vars(presenter).items() if k.isupper() and isinstance(v, str)]
+    texts += list(presenter.PROGRESS_TEXT.values()) + [presenter.saved_text("C:/x.html")]
+    assert len(texts) > 15
+    for text in texts:
+        assert not jargon.search(text), text
 
 
 def test_copy_summary_has_codes_but_no_network_identifiers():

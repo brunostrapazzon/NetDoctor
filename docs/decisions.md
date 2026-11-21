@@ -126,6 +126,32 @@ Fatos confirmados na documentação oficial em 2026-11-20. Rever antes dos marco
   - Perda real na operadora.
   - `netdoctor-cli.exe tech` no `.exe` (o `.exe` não foi gerado de novo neste marco).
 
+## Redesign do relatório e da janela
+
+Feito com os princípios de design engineering (Emil Kowalski) que cabem em cada meio.
+
+- **Relatório HTML:**
+  - Continua um arquivo só, sem recurso externo e sem JavaScript (o teste barra `<script src`, `<link`, `http(s)://`, `@import` e `url(` antes do JSON bruto). Por isso a fonte é a do sistema (Segoe UI no Windows) e o sumário usa âncoras.
+  - Cores como variáveis em `:root`, trocadas por `prefers-color-scheme: dark` só na tela (`@media screen`), então a impressão sai sempre clara. `color-scheme: light dark` deixa barras de rolagem e controles no tema certo.
+  - Escala de espaçamento fixa (4/8/12/16/24/32/48 px) e pesos de fonte em variáveis.
+  - Ordem de leitura: resultado → achados → laudo → testes → JSON. O resultado tem barra lateral na cor da gravidade, selo com ícone + palavra (nunca só cor) e "O que fazer" em passos numerados.
+  - Tabelas com `<thead>`/`scope="col"`, números alinhados à direita com `tabular-nums`, vazio como "—" esmaecido. Cada tabela fica num `role="region"` com `aria-label` e `tabindex="0"`, então rola de lado pelo teclado no celular sem empurrar a página.
+  - Evidência dos achados como pares `chave: valor` em vez de um JSON numa célula (cada parte passa por `html.escape`).
+  - Foco visível em cinza/texto (`:focus-visible`), alvos de toque de 36–44 px, hover só em `(hover: hover) and (pointer: fine)`, `scroll-margin-top` nas âncoras, `text-wrap: balance` nos títulos.
+  - A única animação é a seta do `<details>` (rotação, 200 ms, ease-out), só com `prefers-reduced-motion: no-preference`. Nada de `transition: all`.
+  - Celular (≤ 600 px): o ícone grande some (o selo já tem ícone), o sumário vira uma linha que rola de lado e as tabelas usam a largura toda.
+  - Data em formato brasileiro com o fuso gravado (`<time datetime>` guarda o ISO original).
+  - Conferido com dados falsos dos testes no painel de navegador: claro e escuro a 1100–1200 px e escuro a 375 px, sem rolagem horizontal da página.
+- **Janela (CustomTkinter 6.0.0):**
+  - Paleta, espaçamentos (4/8/12/16/24) e todos os textos fixos foram para `ui/presenter.py`, testáveis sem Tk. As cores são pares (claro, escuro) e repetem os tons do HTML; um teste confere que cada cor tem as duas variantes e outro barra jargão nos textos da janela.
+  - Hierarquia: marca + subtítulo à esquerda, um único botão de destaque (Diagnosticar, azul); Salvar e Copiar são secundários (contorno) porque só valem depois do resultado.
+  - Estados no mesmo cartão: esperando; testando (barra **determinada** que avança uma etapa por vez, em vez da barra indeterminada, e etapas ○ → … → ✔); resultado (selo colorido com ícone + palavra, título, explicação, "O que fazer"). O erro usa o mesmo selo ⚠.
+  - Feedback: o botão principal vira "Testando…" e fica desabilitado; "Copiar resumo" mostra "✔ Copiado" por 1,6 s; a linha de status fica verde ao salvar e âmbar se falhar.
+  - Enter também inicia o diagnóstico (o worker já recusa um segundo início).
+  - Não muda: thread do worker + fila + `after(100)`, Salvar grava HTML e `.json`, o resumo copiado não leva nenhum identificador da rede.
+  - APIs conferidas no código instalado (`CTkButton` `hover_color`/`text_color_disabled`, `CTkProgressBar` `mode`/`progress_color`/`set`, `CTkLabel` `corner_radius`/`fg_color`, `CTk(fg_color=…)`). A montagem foi exercitada com widgets falsos que validam os argumentos contra essas assinaturas, sem abrir janela. **A janela em si não foi aberta**: falta conferir à vista.
+  - As capturas em `docs/img/` são da janela antiga e precisam ser refeitas.
+
 ## IA (Marco 5)
 
 - **Groq:** API compatível com OpenAI em `https://api.groq.com/openai/v1`. Dá para usar o SDK `openai` com `base_url` trocada, o que facilita trocar de provedor (Groq/OpenAI/Ollama).

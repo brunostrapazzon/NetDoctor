@@ -119,11 +119,11 @@ Os limiares ficam em [`netdoctor/core/thresholds.toml`](netdoctor/core/threshold
 
 - **Explicação offline** ([`explain/templates.py`](netdoctor/explain/templates.py)): para cada código, uma frase de causa, um detalhe e de 1 a 3 ações, sem jargão (um teste barra palavras como "gateway", "DNS", "IP"). Achados secundários aparecem como "Também notamos: …".
 - **Relatório JSON**: diagnóstico, explicação e todos os fatos medidos.
-- **Relatório HTML**: um único arquivo, sem nada externo, que abre offline em qualquer navegador e pode ser anexado num chamado. Tem tema claro e escuro.
+- **Relatório HTML**: um único arquivo, sem nada externo (sem fontes da web, sem JavaScript), que abre offline em qualquer navegador e pode ser anexado num chamado. Começa pelo resultado (selo ✔/⚠/✖ com texto, o que fazer em passos numerados), depois os achados, o laudo técnico quando houver, uma tabela por teste e o JSON bruto recolhido. Tem sumário com atalhos para cada seção, tema claro e escuro automático, tabelas com números alinhados que rolam de lado no celular, foco visível para teclado e versão para impressão.
 
 ### Interface (Modo Cliente)
 
-Um botão **Diagnosticar**, uma lista de etapas que vai sendo marcada (✔) conforme cada teste termina e, no fim, o resultado com ícone e cor (✔ normal, ⚠ atenção, ✖ problema) e o que fazer. **Salvar relatório** grava o HTML e uma cópia `.json` para o suporte. **Copiar resumo** copia só a explicação e os códigos, sem nome da rede nem endereços, pronto para colar no WhatsApp.
+Um botão **Diagnosticar** (ou Enter), uma barra que avança uma etapa por vez e uma lista de etapas marcada conforme cada teste começa (…) e termina (✔). No fim, um cartão com o selo do resultado, sempre com ícone e palavra além da cor (✔ Normal, ⚠ Atenção, ✖ Problema), a explicação e o que fazer. As cores seguem a mesma paleta do relatório HTML, nos temas claro e escuro do Windows. **Salvar relatório** grava o HTML e uma cópia `.json` para o suporte. **Copiar resumo** copia só a explicação e os códigos, sem nome da rede nem endereços, pronto para colar no WhatsApp; o botão mostra "✔ Copiado" por um instante.
 
 **Por que CustomTkinter:** é leve, roda sobre o Tkinter que já vem com o Python, tem tema claro/escuro automático e escala bem em telas HiDPI. O PyInstaller tem hook oficial para ele, o que mantém o `.exe` pequeno. PySide6/Qt deixaria o executável dezenas de MB maior e complica a licença; Tkinter puro tem visual datado.
 
