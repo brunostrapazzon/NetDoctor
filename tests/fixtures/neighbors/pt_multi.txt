@@ -1,0 +1,69 @@
+ 
+Nome da interface: Wi-Fi 
+Há 6 redes visíveis no momento. 
+
+SSID 1 : MinhaRede
+    Tipo de rede            : Infraestrutura
+    Autenticação            : WPA2-Personal
+    BSSID 1                 : aa:bb:cc:dd:ee:01
+         Sinal             : 100%  
+         Tipo de Rádio         : 802.11ax
+         Banda               : 5 GHz
+         Canal            : 36 
+         Carga Bss:
+             Estações Conectadas:         2
+             Utilização do canal:        0 (0 %)
+    BSSID 2                 : aa:bb:cc:dd:ee:02
+         Sinal             : 80%  
+         Tipo de Rádio         : 802.11n
+         Banda               : 2.4 GHz
+         Canal            : 6 
+         Carga Bss:
+             Estações Conectadas:         5
+             Utilização do canal:        178 (70 %)
+
+SSID 2 : VizinhoA
+    Tipo de rede            : Infraestrutura
+    Autenticação            : WPA2-Personal
+    BSSID 1                 : 11:22:33:44:55:01
+         Sinal             : 70%  
+         Tipo de Rádio         : 802.11n
+         Banda               : 2.4 GHz
+         Canal            : 6 
+
+SSID 3 : VizinhoB
+    Tipo de rede            : Infraestrutura
+    Autenticação            : WPA2-Personal
+    BSSID 1                 : 11:22:33:44:55:02
+         Sinal             : 55%  
+         Tipo de Rádio         : 802.11n
+         Banda               : 2.4 GHz
+         Canal            : 4 
+
+SSID 4 : 
+    Tipo de rede            : Infraestrutura
+    Autenticação            : WPA2-Personal
+    BSSID 1                 : 11:22:33:44:55:03
+         Sinal             : 60%  
+         Tipo de Rádio         : 802.11n
+         Banda               : 2.4 GHz
+         Canal            : 8 
+
+SSID 5 : VizinhoC
+    Tipo de rede            : Infraestrutura
+    Autenticação            : WPA2-Personal
+    BSSID 1                 : 11:22:33:44:55:04
+         Sinal             : 40%  
+         Tipo de Rádio         : 802.11ac
+         Banda               : 5 GHz
+         Canal            : 149 
+
+SSID 6 : VizinhoD
+    Tipo de rede            : Infraestrutura
+    Autenticação            : WPA2-Personal
+    BSSID 1                 : 11:22:33:44:55:05
+         Sinal             : 20%  
+         Tipo de Rádio         : 802.11n
+         Banda               : 2.4 GHz
+         Canal            : 1 
+

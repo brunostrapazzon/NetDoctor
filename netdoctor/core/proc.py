@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import locale
+import os
 import subprocess
 import sys
 
@@ -36,14 +37,24 @@ def decode_output(raw: bytes, encoding: str | None = None) -> str:
         return raw.decode(_default_encoding(), errors="replace")
 
 
-def run_command(args: list[str], timeout: float, encoding: str | None = None) -> tuple[int, str]:
+def run_command(
+    args: list[str],
+    timeout: float,
+    encoding: str | None = None,
+    env_extra: dict[str, str] | None = None,
+) -> tuple[int, str]:
     """Roda `args` e devolve (returncode, stdout decodificado).
 
     Todas as streams são redirecionadas porque, no .exe `--windowed` do
     PyInstaller, sys.stdin/stdout/stderr são None. CREATE_NO_WINDOW evita
     que uma janela de console pisque na interface gráfica.
+
+    `env_extra` passa valores ao comando por variável de ambiente, nunca
+    colados no texto do comando (evita injeção em scripts do PowerShell).
     """
-    kwargs = {}
+    kwargs: dict = {}
+    if env_extra:
+        kwargs["env"] = {**os.environ, **env_extra}
     if sys.platform == "win32":
         kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
     try:

@@ -16,3 +16,29 @@ high_loss_pct = 20
 # energia do Wi-Fi gera picos isolados, por isso a média e uma margem generosa.
 # Média ≥ 50 ms indica interferência, canal congestionado ou roteador sobrecarregado.
 high_avg_rtt_ms = 50
+
+# --- Modo Técnico (netdoctor/tech/analysis.py) ---------------------------------
+
+[tech]
+# Rede vizinha com sinal a partir deste valor disputa o canal de verdade
+# (≈ -75 dBm, mesma régua do Wi-Fi fraco). Redes mais fracas quase não atrapalham.
+strong_neighbor_pct = 50
+
+# Quantas redes vizinhas fortes no mesmo canal (ou sobrepostas, em 2,4 GHz)
+# caracterizam congestionamento. Uma ou duas são normais em prédio; três já
+# dividem o tempo de antena de forma perceptível.
+congested_neighbors = 3
+
+# Utilização do canal informada pelo próprio roteador (BSS Load), quando ele
+# informa. Acima de 60% o canal fica ocupado a maior parte do tempo.
+busy_utilization_pct = 60
+
+# Perda no tracert só conta se começar num salto e continuar até o destino.
+# Perda num salto intermediário que some depois é só o roteador do caminho
+# dando baixa prioridade a ICMP, não problema real.
+route_loss_pct = 20
+
+# Aumento de latência, em relação ao roteador, que persiste até o destino.
+# 1.1.1.1 é anycast e costuma ficar a < 30 ms no Brasil; +60 ms é anormal
+# para a maioria das conexões (exceto satélite e alguns enlaces de rádio).
+route_latency_jump_ms = 60

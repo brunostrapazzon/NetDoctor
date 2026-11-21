@@ -1,0 +1,22 @@
+ 
+Nome da interface: Wi-Fi 
+Há 1 redes visíveis no momento. 
+
+SSID 1 : MinhaRede
+    Tipo de rede            : Infraestrutura
+    Autenticação            : WPA2-Personal
+    Criptografia            : CCMP
+    BSSID 1                 : aa:bb:cc:dd:ee:01
+         Sinal             : 100%  
+         Tipo de Rádio         : 802.11ax
+         Banda               : 5 GHz
+         Canal            : 36 
+         Carga Bss:
+             Estações Conectadas:         2
+             Utilização do canal:        0 (0 %)
+             Capacidade média disponível:  31250 (1000000 us/s)
+         MSCS QoS com Suporte : 0
+         Mapa QoS com Suporte : 0
+         Taxas básicas (Mbps): 6 12 24
+         Outras taxas (Mbps): 9 18 36 48 54
+

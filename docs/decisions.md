@@ -91,6 +91,41 @@ Fatos confirmados na documentação oficial em 2026-11-20. Rever antes dos marco
   - Os workflows rodando no GitHub (repositório ainda não publicado).
   - O aviso do SmartScreen num computador limpo.
 
+## Marco 7: Modo Técnico
+
+- **Só pela linha de comando (`netdoctor tech`).** Quem usa é o técnico, a especificação pede um "laudo exportável" e a interface do Modo Cliente continua com um botão só. O botão na interface fica para depois, porque precisa ser testado com a janela aberta.
+- **Mesmo fluxo do cliente:** `run_pipeline(tech=True)` roda as 5 probes do cliente e as 3 técnicas em paralelo, com tempo limite de 37 s (o `tracert` domina). O diagnóstico do cliente não muda; o relatório ganha a chave `tech`. A IA recebe exatamente o mesmo payload do Modo Cliente (testado).
+- **Redes vizinhas sem identificar ninguém.**
+  - `netsh wlan show networks mode=bssid` só lê a lista que o Windows já tem.
+  - O SSID das redes é usado só para marcar quais pontos de acesso são da própria rede (as duas bandas e os nós de mesh) e é descartado. Nome e BSSID de vizinhos nunca entram no relatório (há teste).
+  - Isso atende ao anti-objetivo "não varrer redes de terceiros": medimos o espectro, não as redes dos outros.
+- **Canal:**
+  - Em 2,4 GHz, canais de 20 MHz se sobrepõem a menos de 5 canais de distância. Em 5 GHz conta só o mesmo canal; canais de 40/80 MHz não são considerados (limitação).
+  - "Forte" = sinal ≥ 50%, a mesma régua do Wi-Fi fraco.
+  - A sugestão de canal se limita a 1/6/11 e aos de 5 GHz sem DFS permitidos no Brasil (36–48, 149–161). Só sugere se o canal novo for estritamente melhor.
+  - A utilização do canal vem do BSS Load que o roteador anuncia ("Utilização do canal: 0 (0 %)"), quando há.
+- **Aparelhos:** `Get-NetNeighbor`, e não `arp -a`, porque o estado vem como número de enum e não muda com o idioma.
+  - Filtra multicast, broadcast, endereços fora da sub-rede, entradas mortas (Unreachable/Incomplete) e MAC zerado.
+  - O nome do adaptador vai ao PowerShell por variável de ambiente (`env_extra` em `run_command`), nunca colado no script (há teste com um nome malicioso).
+  - O MAC aleatório (bit de administração local) é sinalizado, porque explica "aparelhos desconhecidos", que costumam ser celulares.
+- **Saltos:** `tracert -d -h 15 -w 500 1.1.1.1`.
+  - `-d` evita resolver nomes: mais rápido e sem hostnames no laudo.
+  - O parsing usa o número do salto, as três colunas "N ms"/"<1 ms"/"*" e o IP, igual em PT e EN.
+- **Análise de rota:**
+  - Perda ou latência só contam se começam num salto e **persistem até o destino**. Um salto do meio que some depois é só ICMP com baixa prioridade.
+  - Local × operadora se decide pelo IP do roteador (o gateway). A rede real desta máquina mostrou CGNAT (100.64/10) e IPs privados dentro da operadora, então a faixa de IP não serve para isso.
+  - Latência: +60 ms em relação ao roteador. Perda: ≥ 20%.
+  - Não chegar ao destino é só informativo.
+- **Verificado nesta máquina:** `netdoctor tech --html … -o …` (código-fonte, só no terminal) levou 12,6 s.
+  - As 8 probes deram ok: canal 36 sem disputa, 8 saltos sem problema, 4 aparelhos (1 com MAC aleatório).
+  - O HTML tem todas as seções e nenhum recurso externo.
+- **Fixtures:** `pt_single` (redes) e `pt_ok` (tracert) foram capturados aqui e anonimizados. Os IPs do caminho foram trocados por faixas de documentação, mantendo o tipo de cada salto. Os MACs usam 00-00-5E-00-53-xx, a faixa de documentação da IANA.
+- **Não verificado:**
+  - As saídas EN e o caso com várias redes vizinhas, que foram montados.
+  - Rede com canal congestionado de verdade.
+  - Perda real na operadora.
+  - `netdoctor-cli.exe tech` no `.exe` (o `.exe` não foi gerado de novo neste marco).
+
 ## IA (Marco 5)
 
 - **Groq:** API compatível com OpenAI em `https://api.groq.com/openai/v1`. Dá para usar o SDK `openai` com `base_url` trocada, o que facilita trocar de provedor (Groq/OpenAI/Ollama).

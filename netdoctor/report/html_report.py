@@ -21,6 +21,9 @@ PROBE_TITLE = {
     "ping": "Resposta do roteador e da internet (ping)",
     "dns": "Tradução de nomes (DNS)",
     "http": "Acesso a sites (HTTP/HTTPS)",
+    "neighbors": "Redes Wi-Fi visíveis (canais)",
+    "devices": "Aparelhos na rede (tabela ARP)",
+    "hops": "Caminho até a internet (tracert)",
 }
 ROLE_LABEL = {
     "gateway": "Roteador",
@@ -134,7 +137,60 @@ def _probe_body(probe: dict[str, Any]) -> str:
         if n.get("redirect_host"):
             extra = f"<p>Redirecionado para: <code>{_e(n['redirect_host'])}</code></p>"
         return _table(["Teste", "Status", "OK", "Tempo (ms)", "Erro"], rows) + extra
+    if name == "neighbors" and "access_points" in data:
+        rows = [
+            [
+                "esta rede" if ap["own"] else ("oculta" if ap["hidden"] else "vizinha"),
+                ap["band"],
+                ap["channel"],
+                f"{ap['signal_pct']}%" if ap["signal_pct"] is not None else None,
+                f"{ap['utilization_pct']}%" if ap["utilization_pct"] is not None else None,
+                ap["stations"],
+            ]
+            for ap in sorted(
+                data["access_points"], key=lambda a: (not a["own"], -(a["signal_pct"] or 0))
+            )
+        ]
+        intro = '<p class="muted">Nomes e BSSIDs das redes vizinhas não são registrados.</p>'
+        headers = ["Rede", "Banda", "Canal", "Sinal", "Utilização", "Aparelhos no AP"]
+        return intro + _table(headers, rows)
+    if name == "devices" and "devices" in data:
+        rows = [[d["ip"], d["mac"], d["gateway"], d["randomized_mac"]] for d in data["devices"]]
+        intro = (
+            '<p class="muted">Leitura passiva do cache do Windows: mostra quem conversou com '
+            "este computador recentemente, não necessariamente todos os aparelhos.</p>"
+        )
+        return intro + _table(["IP", "MAC", "Roteador", "MAC aleatório"], rows)
+    if name == "hops" and "hops" in data:
+        rows = [
+            [
+                h["hop"],
+                h["ip"],
+                *[("*" if r is None else r) for r in h["rtt_ms"]],
+                f"{h['loss_pct']:g}%",
+                h["avg_ms"],
+            ]
+            for h in data["hops"]
+        ]
+        headers = ["Salto", "IP", "1 (ms)", "2 (ms)", "3 (ms)", "Perda", "Média (ms)"]
+        status = "chegou" if data["reached"] else "não chegou"
+        intro = f'<p class="muted">Destino <code>{_e(data["target"])}</code>: {status}.</p>'
+        return intro + _table(headers, rows)
     return _kv(data)
+
+
+def _tech_section(tech: dict[str, Any]) -> str:
+    rows = "".join(
+        f'<tr><td><span class="badge {escape(str(f["severity"]))}">'
+        f"{escape(SEVERITY_LABEL.get(str(f['severity']), str(f['severity'])))}</span></td>"
+        f"<td>{_e(f['text'])}</td><td>{_e(f['action_text'] or None)}</td>"
+        f"<td><code>{_e(f['code'])}</code></td></tr>"
+        for f in tech["findings"]
+    )
+    head = "<tr><th>Gravidade</th><th>Observação</th><th>Recomendação</th><th>Código</th></tr>"
+    notes = "".join(f'<p class="muted">{_e(n)}</p>' for n in tech["notes"])
+    table = f'<div class="table-wrap"><table>{head}{rows}</table></div>' if rows else ""
+    return f'<section class="card"><h2>Laudo técnico</h2>{table}{notes}</section>'
 
 
 def render_html(report: dict[str, Any]) -> str:
@@ -165,6 +221,10 @@ def render_html(report: dict[str, Any]) -> str:
         f"({_e(p['duration_ms'])} ms)</span></h2>{_probe_body(p)}</section>"
         for p in report["probes"]
     )
+    tech = report.get("tech")
+    tech_html = _tech_section(tech) if tech else ""
+    kind = "Laudo técnico" if tech else "Relatório técnico"
+    devices_note = " e dos aparelhos conectados (MAC)" if tech else ""
     raw = escape(json.dumps(report, ensure_ascii=False, indent=2))
     os_info = f"{report['os']['system']} {report['os']['release']}"
 
@@ -173,12 +233,12 @@ def render_html(report: dict[str, Any]) -> str:
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>NetDoctor — Relatório</title>
+<title>NetDoctor — {kind}</title>
 <style>{_CSS}</style>
 </head>
 <body>
 <main>
-<h1>NetDoctor — Relatório técnico</h1>
+<h1>NetDoctor — {kind}</h1>
 <div class="meta">Gerado em {_e(report["generated_at"])} · versão {_e(report["version"])} ·
 {_e(os_info)}</div>
 
@@ -194,12 +254,14 @@ def render_html(report: dict[str, Any]) -> str:
 
 <section class="card"><h2>Achados (para o suporte)</h2>{findings}</section>
 
+{tech_html}
+
 {probes}
 
 <section class="card"><details><summary>Dados brutos (JSON)</summary><pre>{raw}</pre>
 </details></section>
 
-<footer>Este relatório contém dados da sua rede (nome do Wi-Fi e endereços locais).
+<footer>Este relatório contém dados da sua rede (nome do Wi-Fi e endereços locais{devices_note}).
 Envie apenas ao suporte técnico em quem você confia. Nada foi enviado pela internet
 para gerá-lo.</footer>
 </main>

@@ -59,6 +59,12 @@ def _int(value: str | None) -> int | None:
     return int(match.group()) if match else None
 
 
+def location_denied(text: str) -> bool:
+    """O `netsh wlan` recusou por falta de permissão de Localização (PT ou EN)."""
+    normalized = _normalize(text)
+    return any(all(word in normalized for word in hint) for hint in _LOCATION_HINTS)
+
+
 def _parse_blocks(text: str) -> list[dict[str, str]]:
     blocks: list[dict[str, str]] = []
     current: dict[str, str] = {}
@@ -84,8 +90,7 @@ def parse_interfaces(text: str) -> dict[str, Any]:
     Devolve `{"error": ...}` quando não há dado de Wi-Fi para ler, ou os campos
     da interface conectada (ou da primeira, se nenhuma estiver conectada).
     """
-    normalized = _normalize(text)
-    if any(all(word in normalized for word in hint) for hint in _LOCATION_HINTS):
+    if location_denied(text):
         return {"error": LOCATION_PERMISSION}
 
     blocks = [b for b in _parse_blocks(text) if "state" in b]

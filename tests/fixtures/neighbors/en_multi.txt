@@ -1,0 +1,69 @@
+ 
+Interface name : Wi-Fi 
+There are 6 networks currently visible. 
+
+SSID 1 : MinhaRede
+    Network type            : Infrastructure
+    Authentication          : WPA2-Personal
+    BSSID 1                 : aa:bb:cc:dd:ee:01
+         Signal             : 100%  
+         Radio type         : 802.11ax
+         Band               : 5 GHz
+         Channel            : 36 
+         Bss Load:
+             Connected Stations:        2
+             Channel Utilization:       0 (0 %)
+    BSSID 2                 : aa:bb:cc:dd:ee:02
+         Signal             : 80%  
+         Radio type         : 802.11n
+         Band               : 2.4 GHz
+         Channel            : 6 
+         Bss Load:
+             Connected Stations:        5
+             Channel Utilization:       178 (70 %)
+
+SSID 2 : VizinhoA
+    Network type            : Infrastructure
+    Authentication          : WPA2-Personal
+    BSSID 1                 : 11:22:33:44:55:01
+         Signal             : 70%  
+         Radio type         : 802.11n
+         Band               : 2.4 GHz
+         Channel            : 6 
+
+SSID 3 : VizinhoB
+    Network type            : Infrastructure
+    Authentication          : WPA2-Personal
+    BSSID 1                 : 11:22:33:44:55:02
+         Signal             : 55%  
+         Radio type         : 802.11n
+         Band               : 2.4 GHz
+         Channel            : 4 
+
+SSID 4 : 
+    Network type            : Infrastructure
+    Authentication          : WPA2-Personal
+    BSSID 1                 : 11:22:33:44:55:03
+         Signal             : 60%  
+         Radio type         : 802.11n
+         Band               : 2.4 GHz
+         Channel            : 8 
+
+SSID 5 : VizinhoC
+    Network type            : Infrastructure
+    Authentication          : WPA2-Personal
+    BSSID 1                 : 11:22:33:44:55:04
+         Signal             : 40%  
+         Radio type         : 802.11ac
+         Band               : 5 GHz
+         Channel            : 149 
+
+SSID 6 : VizinhoD
+    Network type            : Infrastructure
+    Authentication          : WPA2-Personal
+    BSSID 1                 : 11:22:33:44:55:05
+         Signal             : 20%  
+         Radio type         : 802.11n
+         Band               : 2.4 GHz
+         Channel            : 1 
+

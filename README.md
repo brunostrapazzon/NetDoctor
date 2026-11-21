@@ -2,7 +2,7 @@
 
 Diagnóstico de internet para Windows que explica a causa do problema em português simples.
 
-> **Status:** Marco 6 de 7: interface gráfica do Modo Cliente, testes de rede (incluindo Wi-Fi), regras de diagnóstico, explicação em português simples (offline, com IA opcional), relatórios JSON/HTML e `.exe` gerado pelo PyInstaller.
+> **Status:** os 7 marcos da v1 estão prontos: interface gráfica do Modo Cliente, testes de rede (incluindo Wi-Fi), regras de diagnóstico, explicação em português simples (offline, com IA opcional), relatórios JSON/HTML, `.exe` gerado pelo PyInstaller e Modo Técnico com laudo (pela linha de comando).
 
 | Testando | Resultado (tema claro) | Resultado (tema escuro) |
 |---|---|---|
@@ -18,7 +18,7 @@ Trabalho há cerca de 3 anos com suporte de TI e redes num representante de prov
 2. Dê dois cliques. Não precisa instalar nada nem ser administrador.
 3. Clique em **Diagnosticar**.
 
-Também há o `netdoctor-cli.exe`, para quem prefere o terminal: `netdoctor-cli.exe diagnose --html relatorio.html`.
+Também há o `netdoctor-cli.exe`, para quem prefere o terminal: `netdoctor-cli.exe diagnose --html relatorio.html`. O Modo Técnico, para quem dá suporte, roda com `netdoctor-cli.exe tech --html laudo.html`.
 
 **Aviso do Windows (SmartScreen):** o executável não é assinado digitalmente (um certificado custa caro para um projeto pessoal). Na primeira vez o Windows pode mostrar "O Windows protegeu o computador". Clique em **Mais informações** e em **Executar assim mesmo**. Para conferir se o arquivo é o original, compare o hash com o `SHA256SUMS.txt` do release:
 
@@ -42,6 +42,7 @@ py -3.12 -m venv .venv
 .venv\Scripts\netdoctor diagnose -o rel.json      # salva o relatório JSON
 .venv\Scripts\netdoctor diagnose --html rel.html  # salva o relatório HTML para o suporte
 .venv\Scripts\netdoctor diagnose --sem-ia         # ignora a IA mesmo se configurada
+.venv\Scripts\netdoctor tech --html laudo.html    # Modo Técnico: laudo com canais, aparelhos e saltos
 ```
 
 ### IA opcional
@@ -128,6 +129,31 @@ Um botão **Diagnosticar**, uma lista de etapas que vai sendo marcada (✔) conf
 
 O diagnóstico roda numa thread separada e conversa com a janela por uma fila, então a tela nunca trava. A lógica da tela (textos, resumo, thread) tem testes que não precisam abrir janela.
 
+### Modo Técnico (`netdoctor tech`)
+
+Para quem dá suporte. Roda o mesmo diagnóstico do Modo Cliente e, em paralelo, mais três probes. Gera um **laudo técnico** (texto, JSON ou HTML) em cerca de 15 s. No pior caso o `tracert` leva até 30 s.
+
+| Probe | O que mede | Como |
+|---|---|---|
+| `neighbors` | Redes Wi-Fi visíveis: banda, canal, sinal e, se o roteador informar, a utilização do canal e quantos aparelhos estão nele | `netsh wlan show networks mode=bssid` (PT/EN). Lê a lista que o Windows já tem e **não guarda nome nem BSSID das redes vizinhas** |
+| `devices` | Aparelhos na rede: IP, MAC, qual é o roteador, MAC aleatório (celulares) | `Get-NetNeighbor` (tabela ARP). **Passivo**: só lê o cache, não varre a rede |
+| `hops` | Latência e perda por salto até 1.1.1.1 | `tracert -d` (sem resolver nomes), parsing igual em PT e EN |
+
+O laudo traz achados determinísticos, com limiares no mesmo [`thresholds.toml`](netdoctor/core/thresholds.toml):
+
+| Código | Quando | Recomendação |
+|---|---|---|
+| `CHANNEL_CONGESTED` | 3+ redes vizinhas fortes (sinal ≥ 50%) no mesmo canal, ou sobrepostas em 2,4 GHz | Trocar para o canal menos disputado (1/6/11 em 2,4 GHz; 36–48 e 149–161 em 5 GHz) |
+| `CHANNEL_BUSY` | O roteador informa utilização do canal ≥ 60% | Reduzir aparelhos na banda ou trocar de canal |
+| `ROUTE_LOSS_LOCAL` / `ROUTE_LOSS_ISP` | Perda que começa num salto e **continua até o destino** | Rede local, ou chamado na operadora |
+| `ROUTE_LATENCY_ISP` | Latência +60 ms em relação ao roteador, a partir de um salto e até o destino | Chamado na operadora |
+| `ROUTE_INCOMPLETE` | O `tracert` não chegou ao destino | Só informativo (pode ser filtro de ICMP) |
+| `CHANNEL_OK`, `ROUTE_OK`, `DEVICES_SEEN` | Informativos | — |
+
+Perda ou atraso num salto do meio que **some nos saltos seguintes** é ignorado: é o roteador do caminho dando baixa prioridade a ICMP, um falso alarme clássico de `tracert`. O que é local e o que é da operadora se decide pelo endereço do roteador, não pela faixa do IP, porque operadoras usam IPs privados e CGNAT por dentro.
+
+O Modo Técnico **não muda o diagnóstico do cliente** e nada dele vai para a IA.
+
 ### Por que a IA não decide o diagnóstico
 
 O diagnóstico vem de regras fixas e testadas. A IA (opcional) só reescreve em linguagem simples um resultado que já foi decidido: ela recebe o código do achado e o texto offline como base, e devolve uma frase e de 1 a 3 ações, que são validadas antes de aparecer. Assim o resultado é reproduzível, funciona sem internet (justamente quando o usuário mais precisa) e não depende do humor de um modelo. Quando a IA reescreve, a tela avisa.
@@ -140,6 +166,7 @@ Provedores suportados: Groq, OpenAI e Ollama local, todos pela API compatível c
 - Endereços contatados pelos testes: o seu roteador, os servidores DNS configurados, `1.1.1.1` e `8.8.8.8` (ping e DNS), `www.msftconnecttest.com` (o mesmo teste que o próprio Windows faz) e `www.google.com/generate_204`.
 - **IA desligada por padrão.** Se você configurar uma, ela recebe só: o código do achado (ex.: `WIFI_WEAK`), a gravidade, o tipo de conexão (Wi-Fi/cabo), números (sinal %, perda %, tempo em ms) e o texto offline como base. **Nunca** nome da rede, MAC, endereços IP, nome do computador ou do adaptador. Isso é garantido por uma lista fechada de campos permitidos e por testes. Também foi conferido de ponta a ponta com os dados reais de uma máquina.
 - A chave da IA fica só no seu `.env`, que não vai para o repositório.
+- **Modo Técnico:** só analisa a rede à qual o computador está conectado. Das redes vizinhas, registra só canal, banda e sinal, nunca o nome ou o BSSID. A lista de aparelhos vem do cache do Windows, sem varredura. O laudo tem os MACs dos aparelhos da sua rede e os IPs do caminho até a internet. Ele fica no seu computador, como o relatório.
 
 ## Desenvolvimento
 
@@ -169,6 +196,12 @@ Saem dois arquivos únicos em `dist\`: `NetDoctor.exe` (interface, sem console, 
 - A probe `adapter` leva de 3 a 7 s porque o PowerShell precisa carregar os módulos de rede.
 - O `.exe` não é assinado, então o SmartScreen avisa na primeira execução. Como é `--onefile`, ele se extrai numa pasta temporária a cada abertura, o que leva 1 ou 2 segundos.
 - Os workflows do GitHub Actions ainda não rodaram de verdade: o repositório ainda não foi publicado.
+- Modo Técnico:
+  - Só pela linha de comando; a interface gráfica ainda não tem o botão.
+  - As saídas em inglês do `netsh wlan show networks` e do `tracert`, e o caso com várias redes vizinhas, foram montados a partir do formato real, não capturados.
+  - Em 5 GHz não considera canais de 40/80 MHz (só disputa no mesmo canal).
+  - A utilização do canal só aparece se o roteador anunciar BSS Load.
+  - A contagem de aparelhos é mínima: só aparece quem conversou com o computador há pouco.
 
 ## Roadmap
 
@@ -178,13 +211,13 @@ Saem dois arquivos únicos em `dist\`: `NetDoctor.exe` (interface, sem console, 
 4. ✅ Interface do Modo Cliente
 5. ✅ IA opcional com fallback
 6. ✅ `.exe` via PyInstaller + GitHub Actions
-7. Modo Técnico
+7. ✅ Modo Técnico (CLI)
 
 ---
 
 ## English summary
 
-NetDoctor is a Windows tool that diagnoses home/office internet problems and explains the cause in plain Portuguese. It grew out of three years of ISP field support, where most "my internet is down" tickets turn out to be weak Wi-Fi, a stuck router or DNS. Diagnosis comes from deterministic, tested rules. An optional LLM only rewrites the already-decided result, and everything works offline. Current status: milestone 6 (single-file `.exe` built with PyInstaller and released by GitHub Actions; CustomTkinter one-click client UI on top of probes incl. Wi-Fi signal, a deterministic rule engine, offline Portuguese explanations with an optional LLM rewrite (Groq/OpenAI/Ollama via the OpenAI-compatible API, allowlist-only payload, silent fallback) and self-contained JSON/HTML reports; CLI also available).
+NetDoctor is a Windows tool that diagnoses home/office internet problems and explains the cause in plain Portuguese. It grew out of three years of ISP field support, where most "my internet is down" tickets turn out to be weak Wi-Fi, a stuck router or DNS. Diagnosis comes from deterministic, tested rules. An optional LLM only rewrites the already-decided result, and everything works offline. Current status: all 7 milestones done, including a technician mode (`netdoctor tech`: channel congestion from nearby networks without storing their names, passive ARP device list, per-hop tracert analysis that ignores ICMP-deprioritizing middle hops, HTML report); single-file `.exe` built with PyInstaller and released by GitHub Actions; CustomTkinter one-click client UI on top of probes incl. Wi-Fi signal, a deterministic rule engine, offline Portuguese explanations with an optional LLM rewrite (Groq/OpenAI/Ollama via the OpenAI-compatible API, allowlist-only payload, silent fallback) and self-contained JSON/HTML reports; CLI also available).
 
 ## Licença
 

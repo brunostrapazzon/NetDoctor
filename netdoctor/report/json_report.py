@@ -18,9 +18,10 @@ def build_report(
     diagnosis: Diagnosis,
     explanation: Explanation,
     generated_at: datetime | None = None,
+    tech: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     when = generated_at or datetime.now(UTC)
-    return {
+    report = {
         "tool": "netdoctor",
         "version": __version__,
         "generated_at": when.isoformat(timespec="seconds"),
@@ -29,6 +30,9 @@ def build_report(
         "explanation": explanation.to_dict(),
         "probes": [r.to_dict() for r in results],
     }
+    if tech is not None:
+        report["tech"] = tech  # Modo Técnico: achados do laudo
+    return report
 
 
 def to_json(report: dict[str, Any]) -> str:

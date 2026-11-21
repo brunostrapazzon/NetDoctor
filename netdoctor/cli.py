@@ -1,4 +1,11 @@
-"""Linha de comando: `netdoctor diagnose [--json] [-o ARQUIVO.json] [--html ARQUIVO.html]`."""
+"""Linha de comando.
+
+    netdoctor diagnose [--json] [-o ARQUIVO.json] [--html ARQUIVO.html] [--sem-ia]
+    netdoctor tech     [--json] [-o ARQUIVO.json] [--html ARQUIVO.html] [--sem-ia]
+
+`tech` é o Modo Técnico: o mesmo diagnóstico mais redes vizinhas e canais,
+aparelhos na rede (ARP, passivo) e saltos até a internet, num laudo.
+"""
 
 from __future__ import annotations
 
@@ -21,6 +28,9 @@ _PROGRESS = {
     "dns": "Testando a tradução de nomes (DNS)…",
     "http": "Testando o acesso a sites…",
     "explain": "Escrevendo a explicação…",
+    "neighbors": "Lendo as redes Wi-Fi vizinhas…",
+    "devices": "Lendo os aparelhos da rede…",
+    "hops": "Rastreando o caminho até a internet (até 30 s)…",
 }
 
 
@@ -80,6 +90,29 @@ def format_summary(results: list[ProbeResult]) -> str:
                 f"[http] teste Windows: {'ok' if ncsi['content_ok'] else 'falhou'}"
                 f" | HTTPS: {'ok' if https['ok'] else https['error'] or https['status']}"
             )
+        elif d.get("skipped"):
+            lines.append(f"[{r.name}] não se aplica ({d['skipped']})")
+        elif r.name == "neighbors":
+            own = sum(1 for ap in d["access_points"] if ap["own"])
+            lines.append(
+                f"[neighbors] {len(d['access_points'])} pontos de acesso visíveis"
+                f" ({own} da própria rede)"
+            )
+        elif r.name == "devices":
+            lines.append(f"[devices] {d['count']} aparelho(s) na tabela ARP")
+        elif r.name == "hops":
+            status = "chegou" if d["reached"] else "não chegou"
+            lines.append(f"[hops] {len(d['hops'])} saltos até {d['target']} ({status})")
+    return "\n".join(lines)
+
+
+def format_tech(tech: dict[str, Any]) -> str:
+    lines = ["--- Laudo técnico ---"]
+    for f in tech["findings"]:
+        lines.append(f"[{f['severity']}] {f['text']}")
+        if f["action_text"]:
+            lines.append(f"    -> {f['action_text']}")
+    lines += [f"Obs.: {n}" for n in tech["notes"]]
     return "\n".join(lines)
 
 
@@ -94,11 +127,12 @@ def _progress(name: str) -> None:
         print(_PROGRESS.get(name, name), file=sys.stderr, flush=True)
 
 
-def cmd_diagnose(args: argparse.Namespace) -> int:
+def cmd_diagnose(args: argparse.Namespace, tech: bool = False) -> int:
     outcome = run_pipeline(
         on_progress=None if args.json else _progress,
         runner=run_all,
         llm_config=None if args.no_ai else AUTO,
+        tech=tech,
     )
     results, diagnosis, explanation, report = (
         outcome.results,
@@ -121,9 +155,16 @@ def cmd_diagnose(args: argparse.Namespace) -> int:
     print("\n--- Detalhes técnicos ---")
     print(format_diagnosis(diagnosis))
     print(format_summary(results))
+    if "tech" in report:
+        print()
+        print(format_tech(report["tech"]))
     for path in saved:
         print(f"\nRelatório salvo em {path}")
     return 0
+
+
+def cmd_tech(args: argparse.Namespace) -> int:
+    return cmd_diagnose(args, tech=True)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -131,16 +172,22 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--version", action="version", version=f"netdoctor {__version__}")
     sub = parser.add_subparsers(dest="command", required=True)
     diag = sub.add_parser("diagnose", help="Testa a conexão e mostra o resultado.")
-    diag.add_argument("--json", action="store_true", help="Saída em JSON.")
-    diag.add_argument("--output", "-o", metavar="ARQUIVO", help="Salva o relatório JSON.")
-    diag.add_argument("--html", metavar="ARQUIVO", help="Salva o relatório técnico HTML.")
-    diag.add_argument(
-        "--sem-ia",
-        dest="no_ai",
-        action="store_true",
-        help="Não usa IA mesmo se configurada (só explicações offline).",
+    tech = sub.add_parser(
+        "tech",
+        help="Modo Técnico: diagnóstico + canais, aparelhos e saltos, em laudo.",
     )
+    for p in (diag, tech):
+        p.add_argument("--json", action="store_true", help="Saída em JSON.")
+        p.add_argument("--output", "-o", metavar="ARQUIVO", help="Salva o relatório JSON.")
+        p.add_argument("--html", metavar="ARQUIVO", help="Salva o relatório/laudo HTML.")
+        p.add_argument(
+            "--sem-ia",
+            dest="no_ai",
+            action="store_true",
+            help="Não usa IA mesmo se configurada (só explicações offline).",
+        )
     diag.set_defaults(func=cmd_diagnose)
+    tech.set_defaults(func=cmd_tech)
     return parser
 
 

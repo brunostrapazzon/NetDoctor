@@ -1,0 +1,9 @@
+
+Tracing route to 1.1.1.1 over a maximum of 15 hops
+
+  1     2 ms     1 ms     1 ms  192.168.0.1 
+  2   180 ms   175 ms   190 ms  100.64.0.1 
+  3   182 ms   178 ms   185 ms  203.0.113.1 
+  4   190 ms   186 ms   188 ms  1.1.1.1 
+
+Trace complete.
