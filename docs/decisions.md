@@ -142,14 +142,16 @@ Feito com os princípios de design engineering (Emil Kowalski) que cabem em cada
   - Celular (≤ 600 px): o ícone grande some (o selo já tem ícone), o sumário vira uma linha que rola de lado e as tabelas usam a largura toda.
   - Data em formato brasileiro com o fuso gravado (`<time datetime>` guarda o ISO original).
   - Conferido com dados falsos dos testes no painel de navegador: claro e escuro a 1100–1200 px e escuro a 375 px, sem rolagem horizontal da página.
-- **Janela (CustomTkinter 6.0.0):**
-  - Paleta, espaçamentos (4/8/12/16/24) e todos os textos fixos foram para `ui/presenter.py`, testáveis sem Tk. As cores são pares (claro, escuro) e repetem os tons do HTML; um teste confere que cada cor tem as duas variantes e outro barra jargão nos textos da janela.
-  - Hierarquia: marca + subtítulo à esquerda, um único botão de destaque (Diagnosticar, azul); Salvar e Copiar são secundários (contorno) porque só valem depois do resultado.
-  - Estados no mesmo cartão: esperando; testando (barra **determinada** que avança uma etapa por vez, em vez da barra indeterminada, e etapas ○ → … → ✔); resultado (selo colorido com ícone + palavra, título, explicação, "O que fazer"). O erro usa o mesmo selo ⚠.
-  - Feedback: o botão principal vira "Testando…" e fica desabilitado; "Copiar resumo" mostra "✔ Copiado" por 1,6 s; a linha de status fica verde ao salvar e âmbar se falhar.
-  - Enter também inicia o diagnóstico (o worker já recusa um segundo início).
+- **Janela (CustomTkinter 6.0.0), segunda versão.** O Bruno achou que a primeira versão ainda tinha "cara de IA". O HTML ficou como estava; a janela foi refeita com outra direção: **utilitário do Windows, não página de produto**.
+  - **Fonte do sistema.** O tema padrão do CustomTkinter usa Roboto; agora é Segoe UI (Semibold nos títulos), a fonte do próprio Windows.
+  - **Cores do sistema do Windows 11** (neutros #f3f3f3/#202020, destaque #005fb8/#60cdff, estados de sucesso, cuidado e erro do Fluent), em vez da paleta de "SaaS".
+  - **Sem cartão nem selo.** O conteúdo fica direto no fundo da janela, entre duas linhas finas. A gravidade é uma faixa de cor de 4 px ao lado do resultado mais a palavra (Normal, Atenção, Problema).
+  - **Sem emoji ou símbolos decorativos** (✔ ⚠ ✖ ○ …). Há teste que barra esses símbolos nos textos da janela.
+  - **Etapas com status de verdade:** cada linha mostra o resultado da própria probe ("ok", "não mediu", "não se aplica" no cabo, "testando…"), em vez de um ícone de progresso. Para isso o worker passa o `ProbeResult` no evento `finished`.
+  - **Layout de caixa de diálogo:** botões embaixo, com o principal (Diagnosticar) à direita; versão e mensagens de status à esquerda; cantos de 4 px; Enter aciona o principal.
+  - **Textos diretos:** "Teste da conexão" em vez de "Vamos testar sua internet?", e sem slogan.
   - Não muda: thread do worker + fila + `after(100)`, Salvar grava HTML e `.json`, o resumo copiado não leva nenhum identificador da rede.
-  - APIs conferidas no código instalado (`CTkButton` `hover_color`/`text_color_disabled`, `CTkProgressBar` `mode`/`progress_color`/`set`, `CTkLabel` `corner_radius`/`fg_color`, `CTk(fg_color=…)`). A montagem foi exercitada com widgets falsos que validam os argumentos contra essas assinaturas, sem abrir janela. **A janela em si não foi aberta**: falta conferir à vista.
+  - `tests/test_ui_app.py` monta a janela de verdade com widgets falsos. Eles aceitam só os parâmetros da assinatura do widget instalado, então um parâmetro errado quebra o teste. O teste passa por esperando → testando → resultado → copiar, e pelo erro. **A janela em si não foi aberta**: falta conferir à vista.
   - As capturas em `docs/img/` são da janela antiga e precisam ser refeitas.
 
 ## IA (Marco 5)

@@ -1,7 +1,13 @@
 """O que a tela mostra, sem depender de Tk (testável sem abrir janela).
 
-Textos, ícones e cores ficam aqui. Toda cor é um par (tema claro, tema escuro),
-no formato que o CustomTkinter aceita, e segue a mesma paleta do relatório HTML.
+Textos, cores e o estado de cada etapa ficam aqui. Toda cor é um par
+(tema claro, tema escuro), no formato que o CustomTkinter aceita.
+
+Direção visual: utilitário do Windows, não página de produto. Fonte do
+sistema (Segoe UI), cores do sistema do Windows 11, cantos pequenos, nenhum
+emoji ou símbolo decorativo. A gravidade aparece como uma faixa de cor ao lado
+do resultado mais uma palavra ("Problema", "Atenção", "Normal"), então nunca
+depende só da cor.
 """
 
 from __future__ import annotations
@@ -14,32 +20,34 @@ from netdoctor.explain.templates import AI_DISCLOSURE
 
 Color = tuple[str, str]
 
-# Paleta da janela: os mesmos tons do relatório HTML (html_report._CSS).
+FONT_FAMILY = "Segoe UI"
+FONT_FAMILY_STRONG = "Segoe UI Semibold"
+
+# Cores do sistema do Windows 11 (neutros, destaque e estados).
 PALETTE: dict[str, Color] = {
-    "window": ("#f4f5f7", "#0f1217"),
-    "surface": ("#ffffff", "#171b23"),
-    "border": ("#e1e4ea", "#2a303b"),
-    "text": ("#151a23", "#e8ebf1"),
-    "muted": ("#596273", "#9ca5b5"),
-    "accent": ("#2459d4", "#3b6fe0"),
-    "accent_hover": ("#1d48ad", "#2f5cc0"),
-    "accent_text": ("#ffffff", "#ffffff"),
-    "accent_disabled_text": ("#c8d5f4", "#a9bcea"),
-    "track": ("#e4e7ec", "#2a303b"),
-    "secondary_hover": ("#eef0f4", "#1f2430"),
-    "ok": ("#16723a", "#6fdc98"),
-    "ok_bg": ("#e5f5eb", "#16301f"),
-    "warn": ("#8a5a00", "#f5c451"),
-    "warn_bg": ("#fff4d6", "#352b14"),
-    "crit": ("#b42318", "#ff8f85"),
-    "crit_bg": ("#fdeceb", "#3b1d1b"),
+    "window": ("#f3f3f3", "#202020"),
+    "rule": ("#e0e0e0", "#383838"),
+    "text": ("#1b1b1b", "#f3f3f3"),
+    "muted": ("#616161", "#a8a8a8"),
+    "accent": ("#005fb8", "#60cdff"),
+    "accent_hover": ("#1a6fc0", "#5ab8e6"),
+    "accent_text": ("#ffffff", "#000000"),
+    "accent_disabled": ("#bfbfbf", "#4a4a4a"),
+    "accent_disabled_text": ("#f3f3f3", "#9a9a9a"),
+    "button": ("#fbfbfb", "#2d2d2d"),
+    "button_hover": ("#f0f0f0", "#353535"),
+    "button_border": ("#d1d1d1", "#424242"),
+    "track": ("#e0e0e0", "#383838"),
+    "ok": ("#0f7b0f", "#6ccb5f"),
+    "warn": ("#9d5d00", "#fce100"),
+    "crit": ("#c42b1c", "#ff99a4"),
 }
 
 # Escala de espaçamento (px). A janela só usa estes valores.
 SPACE = {"xs": 4, "s": 8, "m": 12, "l": 16, "xl": 24}
 
 PROGRESS_TEXT = {
-    "start": "Preparando o diagnóstico…",
+    "start": "Preparando…",
     "adapter": "Verificando a conexão do computador…",
     "wifi": "Medindo o sinal do Wi-Fi…",
     "ping": "Testando o roteador e a internet…",
@@ -48,88 +56,81 @@ PROGRESS_TEXT = {
     "explain": "Escrevendo a explicação…",
 }
 
-# Textos fixos da janela (há teste que barra jargão neles).
-WELCOME_TITLE = "Vamos testar sua internet?"
-WELCOME_BODY = (
-    "Clique em Diagnosticar. Em cerca de 10 segundos o NetDoctor mostra o que está "
-    "acontecendo e o que fazer. Funciona mesmo sem internet."
-)
-RUNNING_TITLE = "Testando sua conexão…"
-ERROR_TITLE = "Não foi possível terminar o teste."
+# Textos fixos da janela (há teste que barra jargão neles). Diretos, sem
+# perguntas retóricas nem slogan.
+WELCOME_TITLE = "Teste da conexão"
+WELCOME_BODY = "Clique em Diagnosticar. O teste leva uns 10 segundos e funciona mesmo sem internet."
+RUNNING_TITLE = "Testando a conexão"
+ERROR_TITLE = "O teste não terminou."
 ERROR_BODY = "Feche outros programas e clique em Diagnosticar de novo."
 ACTIONS_TITLE = "O que fazer"
 BUTTON_DIAGNOSE = "Diagnosticar"
 BUTTON_RUNNING = "Testando…"
-BUTTON_AGAIN = "Diagnosticar de novo"
-BUTTON_SAVE = "Salvar relatório"
+BUTTON_AGAIN = "Testar de novo"
+BUTTON_SAVE = "Salvar relatório…"
 BUTTON_COPY = "Copiar resumo"
-BUTTON_COPIED = "✔  Copiado"
+BUTTON_COPIED = "Copiado"
 COPIED_TEXT = "Resumo copiado. Cole na conversa com o suporte."
 SAVE_FAILED_TEXT = "Não foi possível salvar nesse local. Tente outra pasta."
-SUBTITLE = "Diagnóstico da internet, em português simples"
 
-# Ícone + rótulo + cor + fundo por gravidade. O ícone e o rótulo garantem que
-# a gravidade não dependa só da cor.
-SEVERITY_STYLE = {
-    "critical": ("✖", PALETTE["crit"]),
-    "warning": ("⚠", PALETTE["warn"]),
-    "info": ("✔", PALETTE["ok"]),
-}
 SEVERITY_LABEL = {"critical": "Problema", "warning": "Atenção", "info": "Normal"}
-SEVERITY_TINT = {
-    "critical": PALETTE["crit_bg"],
-    "warning": PALETTE["warn_bg"],
-    "info": PALETTE["ok_bg"],
+SEVERITY_COLOR: dict[str, Color] = {
+    "critical": PALETTE["crit"],
+    "warning": PALETTE["warn"],
+    "info": PALETTE["ok"],
 }
 
-StepState = Literal["pending", "running", "done"]
-STEP_MARK: dict[str, tuple[str, Color]] = {
-    "pending": ("○", PALETTE["muted"]),
-    "running": ("…", PALETTE["text"]),
-    "done": ("✔", PALETTE["ok"]),
+StepState = Literal["pending", "running", "ok", "skipped", "failed"]
+STEP_STATUS: dict[str, tuple[str, Color]] = {
+    "pending": ("", PALETTE["muted"]),
+    "running": ("testando…", PALETTE["muted"]),
+    "ok": ("ok", PALETTE["ok"]),
+    "skipped": ("não se aplica", PALETTE["muted"]),
+    "failed": ("não mediu", PALETTE["warn"]),
 }
 
 
 @dataclass(frozen=True)
 class ResultView:
-    icon: str
+    severity: str
+    label: str
     color: Color
     title: str
     body: str
     actions: str
-    label: str
-    tint: Color
 
 
 def result_view(explanation: dict[str, Any]) -> ResultView:
-    severity = explanation["severity"] if explanation["severity"] in SEVERITY_STYLE else "warning"
-    icon, color = SEVERITY_STYLE[severity]
+    severity = explanation["severity"] if explanation["severity"] in SEVERITY_LABEL else "warning"
     body = [explanation["detail"], *explanation["numbers"]]
     if explanation["also"]:
         body.append("Também notamos: " + "; ".join(explanation["also"]) + ".")
     body += [f"Obs.: {n}" for n in explanation["notes"]]
     if explanation.get("source") == "llm":
         body.append(AI_DISCLOSURE)
-    actions = "\n".join(f"{i}. {a}" for i, a in enumerate(explanation["actions"], 1))
+    actions = "\n".join(f"{i}.  {a}" for i, a in enumerate(explanation["actions"], 1))
     return ResultView(
-        icon,
-        color,
-        explanation["headline"],
-        "\n".join(body),
-        actions,
-        SEVERITY_LABEL[severity],
-        SEVERITY_TINT[severity],
+        severity=severity,
+        label=SEVERITY_LABEL[severity],
+        color=SEVERITY_COLOR[severity],
+        title=explanation["headline"],
+        body="\n".join(body),
+        actions=actions,
     )
 
 
-def badge_text(view: ResultView) -> str:
-    return f"{view.icon}  {view.label}"
+def step_state(probe: Any) -> StepState:
+    """Estado final de uma etapa a partir do ProbeResult dela."""
+    if not probe.ok:
+        return "failed"
+    if (probe.data or {}).get("skipped"):
+        return "skipped"
+    return "ok"
 
 
-def step_line(label: str, state: StepState) -> tuple[str, Color]:
-    """Texto e cor de uma etapa da lista (○ esperando, … testando, ✔ concluída)."""
-    mark, color = STEP_MARK[state]
-    return f"{mark}  {label}", color
+def step_status(state: StepState) -> tuple[str, Color]:
+    """Texto e cor da coluna de status de uma etapa."""
+    return STEP_STATUS[state]
 
 
 def progress_fraction(done: int, total: int) -> float:
@@ -137,7 +138,7 @@ def progress_fraction(done: int, total: int) -> float:
 
 
 def saved_text(path: str) -> str:
-    return f"Relatório salvo em {path} (e uma cópia .json para o suporte)."
+    return f"Salvo em {path} (com uma cópia .json para o suporte)."
 
 
 def progress_text(step: str) -> str:

@@ -123,11 +123,11 @@ Os limiares ficam em [`netdoctor/core/thresholds.toml`](netdoctor/core/threshold
 
 ### Interface (Modo Cliente)
 
-Um botão **Diagnosticar** (ou Enter), uma barra que avança uma etapa por vez e uma lista de etapas marcada conforme cada teste começa (…) e termina (✔). No fim, um cartão com o selo do resultado, sempre com ícone e palavra além da cor (✔ Normal, ⚠ Atenção, ✖ Problema), a explicação e o que fazer. As cores seguem a mesma paleta do relatório HTML, nos temas claro e escuro do Windows. **Salvar relatório** grava o HTML e uma cópia `.json` para o suporte. **Copiar resumo** copia só a explicação e os códigos, sem nome da rede nem endereços, pronto para colar no WhatsApp; o botão mostra "✔ Copiado" por um instante.
+Parece um utilitário do Windows, não um site: fonte do sistema (Segoe UI), cores do sistema do Windows 11 nos temas claro e escuro, sem cartões, selos ou emoji. Os botões ficam embaixo, com **Diagnosticar** à direita, como numa caixa de diálogo; Enter também aciona. Durante o teste, uma barra avança uma etapa por vez e cada etapa mostra o próprio status ("testando…", "ok", "não mediu", "não se aplica"). No resultado, uma faixa de cor ao lado do texto e a palavra da gravidade (Normal, Atenção, Problema), então a cor nunca é a única pista. Depois vêm a explicação e o que fazer. **Salvar relatório…** grava o HTML e uma cópia `.json` para o suporte. **Copiar resumo** copia só a explicação e os códigos, sem nome da rede nem endereços, pronto para colar no WhatsApp.
 
 **Por que CustomTkinter:** é leve, roda sobre o Tkinter que já vem com o Python, tem tema claro/escuro automático e escala bem em telas HiDPI. O PyInstaller tem hook oficial para ele, o que mantém o `.exe` pequeno. PySide6/Qt deixaria o executável dezenas de MB maior e complica a licença; Tkinter puro tem visual datado.
 
-O diagnóstico roda numa thread separada e conversa com a janela por uma fila, então a tela nunca trava. A lógica da tela (textos, resumo, thread) tem testes que não precisam abrir janela.
+O diagnóstico roda numa thread separada e conversa com a janela por uma fila, então a tela nunca trava. A lógica da tela (textos, resumo, thread) e a própria janela, montada com widgets falsos que validam cada parâmetro contra o CustomTkinter instalado, têm testes que não abrem janela.
 
 ### Modo Técnico (`netdoctor tech`)
 

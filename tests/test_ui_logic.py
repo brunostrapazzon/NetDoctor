@@ -10,13 +10,14 @@ from netdoctor.pipeline import run_pipeline
 from netdoctor.ui import presenter
 from netdoctor.ui.presenter import (
     PALETTE,
-    badge_text,
+    SEVERITY_COLOR,
     copy_summary,
     default_report_name,
     progress_fraction,
     progress_text,
     result_view,
-    step_line,
+    step_state,
+    step_status,
 )
 from netdoctor.ui.worker import DiagnosisWorker
 
@@ -48,24 +49,33 @@ REPORT = {
 
 def test_result_view_warning():
     view = result_view(EXPLANATION)
-    assert view.icon == "⚠"
+    assert (view.severity, view.label, view.color) == ("warning", "Atenção", PALETTE["warn"])
     assert view.title == "Seu Wi-Fi está fraco neste lugar."
     assert "Força do sinal: 38%" in view.body
     assert "Também notamos: conexão instável até o roteador." in view.body
-    assert view.actions == "1. Aproxime-se do roteador.\n2. Use cabo."
+    assert view.actions == "1.  Aproxime-se do roteador.\n2.  Use cabo."
 
 
-def test_result_view_ok_and_critical_icons():
-    assert result_view({**EXPLANATION, "severity": "info"}).icon == "✔"
-    assert result_view({**EXPLANATION, "severity": "critical"}).icon == "✖"
-
-
-def test_result_view_badge_never_depends_on_color_alone():
-    assert badge_text(result_view(EXPLANATION)) == "⚠  Atenção"
-    assert badge_text(result_view({**EXPLANATION, "severity": "info"})) == "✔  Normal"
-    assert badge_text(result_view({**EXPLANATION, "severity": "critical"})) == "✖  Problema"
+def test_severity_is_word_and_color_never_color_alone():
+    labels = {
+        sev: result_view({**EXPLANATION, "severity": sev}).label
+        for sev in ("critical", "warning", "info")
+    }
+    assert labels == {"critical": "Problema", "warning": "Atenção", "info": "Normal"}
     unknown = result_view({**EXPLANATION, "severity": "???"})
-    assert (unknown.icon, unknown.label) == ("⚠", "Atenção")
+    assert (unknown.label, unknown.color) == ("Atenção", SEVERITY_COLOR["warning"])
+
+
+def test_window_texts_have_no_decorative_symbols():
+    # Direção visual: utilitário do Windows, sem emoji nem símbolos decorativos.
+    symbols = re.compile("[☀-➿■-◿\U0001f300-\U0001faff]")
+    texts = [v for k, v in vars(presenter).items() if k.isupper() and isinstance(v, str)]
+    texts += [text for text, _ in presenter.STEP_STATUS.values()]
+    for sev in ("critical", "warning", "info"):
+        view = result_view({**EXPLANATION, "severity": sev})
+        texts += [view.label, view.actions]
+    for text in texts:
+        assert not symbols.search(text), text
 
 
 def test_every_color_has_light_and_dark_variant():
@@ -75,10 +85,18 @@ def test_every_color_has_light_and_dark_variant():
         assert pair[0] != pair[1] or name.endswith("text"), name
 
 
-def test_step_lines_mark_progress():
-    assert step_line("Sinal do Wi-Fi", "pending") == ("○  Sinal do Wi-Fi", PALETTE["muted"])
-    assert step_line("Sinal do Wi-Fi", "running")[0] == "…  Sinal do Wi-Fi"
-    assert step_line("Sinal do Wi-Fi", "done") == ("✔  Sinal do Wi-Fi", PALETTE["ok"])
+def test_step_state_from_probe_result():
+    assert step_state(ProbeResult("ping", ok=True, data={"targets": []})) == "ok"
+    assert step_state(ProbeResult("wifi", ok=True, data={"skipped": "not_wifi"})) == "skipped"
+    assert step_state(ProbeResult("dns", ok=False, error="TIMEOUT")) == "failed"
+
+
+def test_step_status_text_and_color():
+    assert step_status("pending") == ("", PALETTE["muted"])
+    assert step_status("running")[0] == "testando…"
+    assert step_status("ok") == ("ok", PALETTE["ok"])
+    assert step_status("skipped") == ("não se aplica", PALETTE["muted"])
+    assert step_status("failed") == ("não mediu", PALETTE["warn"])
 
 
 def test_progress_fraction_is_clamped():
@@ -157,6 +175,8 @@ def test_worker_emits_progress_finished_and_done():
     kinds = [e.kind for e in events]
     assert kinds[0] == "progress"
     assert "finished" in kinds
+    finished = [e.payload for e in events if e.kind == "finished"]
+    assert [(r.name, r.ok) for r in finished] == [("adapter", False), ("ping", False)]
     assert kinds[-1] == "done"
     assert events[-1].payload["diagnosis"]["primary"] == "INCONCLUSIVE"
 

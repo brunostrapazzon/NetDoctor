@@ -19,7 +19,9 @@ from netdoctor.pipeline import AUTO, run_pipeline
 
 @dataclass(frozen=True)
 class Event:
-    kind: str  # "progress" (probe começou) | "finished" (probe terminou) | "done" | "error"
+    # "progress" (probe começou) | "finished" (probe terminou; payload = ProbeResult)
+    # | "done" | "error"
+    kind: str
     payload: Any = None
 
 
@@ -50,7 +52,7 @@ class DiagnosisWorker:
         try:
             result = run_pipeline(
                 lambda step: self.events.put(Event("progress", step)),
-                lambda probe: self.events.put(Event("finished", probe.name)),
+                lambda probe: self.events.put(Event("finished", probe)),  # ProbeResult
                 runner=self._runner,
                 llm_config=self._llm_config,
             )

@@ -1,11 +1,15 @@
 """Janela do Modo Cliente: um clique, resultado em linguagem simples, uma ação.
 
-A lógica fica em presenter.py (textos, cores) e worker.py (thread do
-diagnóstico); aqui só existe Tk. O Tk só é tocado pela thread principal: o
-worker escreve numa fila e a janela lê a fila a cada 100 ms com `after()`.
+A lógica fica em presenter.py (textos, cores, estado das etapas) e worker.py
+(thread do diagnóstico); aqui só existe Tk. O Tk só é tocado pela thread
+principal: o worker escreve numa fila e a janela lê a fila a cada 100 ms com
+`after()`.
 
-Três estados, sempre no mesmo cartão: esperando → testando (barra + etapas
-marcadas ✔) → resultado (selo ✔/⚠/✖ + o que fazer).
+Layout de caixa de diálogo do Windows: título no topo, conteúdo direto no
+fundo da janela (sem cartão), linha fina, e os botões embaixo com o principal
+à direita. Três estados no mesmo lugar: esperando → testando (barra + lista de
+etapas com o status de cada uma) → resultado (faixa de cor + palavra da
+gravidade, explicação e o que fazer).
 """
 
 from __future__ import annotations
@@ -25,23 +29,26 @@ from netdoctor.report.html_report import write_html
 from netdoctor.report.json_report import write_json
 from netdoctor.ui import presenter as p
 from netdoctor.ui.presenter import (
+    FONT_FAMILY,
+    FONT_FAMILY_STRONG,
     PALETTE,
     SPACE,
-    badge_text,
     copy_summary,
     default_report_name,
     progress_fraction,
     progress_text,
     result_view,
-    step_line,
+    step_state,
+    step_status,
 )
 from netdoctor.ui.worker import DiagnosisWorker
 
 ICON_PATH = Path(__file__).with_name("netdoctor.ico")
 POLL_MS = 100
 COPIED_MS = 1600
-PAD = SPACE["xl"]  # margem interna do cartão
-WRAP = 460
+MARGIN = SPACE["xl"]
+WRAP = 470
+STRIPE = 4  # largura da faixa de cor da gravidade
 STEPS = (
     ("adapter", "Conexão do computador"),
     ("wifi", "Sinal do Wi-Fi"),
@@ -58,175 +65,144 @@ class ClientApp(ctk.CTk):
         # Chamar iconbitmap aqui impede o CTk de trocar pelo ícone dele (after 200 ms).
         with contextlib.suppress(Exception):
             self.iconbitmap(str(ICON_PATH))
-        self.geometry("560x580")
-        self.minsize(520, 500)
+        self.geometry("560x540")
+        self.minsize(520, 480)
         self.worker = DiagnosisWorker()
         self.report: dict[str, Any] | None = None
-        self._step_labels: dict[str, ctk.CTkLabel] = {}
+        self._step_status: dict[str, ctk.CTkLabel] = {}
         self._done_steps: set[str] = set()
         self._copied_job: str | None = None
+        # O tema padrão do CustomTkinter usa Roboto; no Windows a fonte do sistema é Segoe UI.
         self.fonts = {
-            "brand": ctk.CTkFont(size=22, weight="bold"),
-            "subtitle": ctk.CTkFont(size=13),
-            "title": ctk.CTkFont(size=19, weight="bold"),
-            "body": ctk.CTkFont(size=14),
-            "section": ctk.CTkFont(size=14, weight="bold"),
-            "badge": ctk.CTkFont(size=13, weight="bold"),
-            "button": ctk.CTkFont(size=14, weight="bold"),
-            "small": ctk.CTkFont(size=12),
+            "brand": ctk.CTkFont(family=FONT_FAMILY_STRONG, size=20),
+            "title": ctk.CTkFont(family=FONT_FAMILY_STRONG, size=18),
+            "label": ctk.CTkFont(family=FONT_FAMILY_STRONG, size=13),
+            "section": ctk.CTkFont(family=FONT_FAMILY_STRONG, size=14),
+            "body": ctk.CTkFont(family=FONT_FAMILY, size=14),
+            "button": ctk.CTkFont(family=FONT_FAMILY, size=14),
+            "small": ctk.CTkFont(family=FONT_FAMILY, size=12),
         }
 
         self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(1, weight=1)
+        self.grid_rowconfigure(2, weight=1)
         self._build_header()
+        self._rule(row=1)
         self._build_body()
+        self._rule(row=3)
         self._build_footer()
-        # Enter também diagnostica (o worker ignora um segundo início).
+        # Enter aciona o botão principal, como numa caixa de diálogo do Windows.
         self.bind("<Return>", lambda _e: self.start_diagnosis())
         self.bind("<KP_Enter>", lambda _e: self.start_diagnosis())
         self._show_welcome()
 
     # --- Montagem -------------------------------------------------------------------
 
-    def _build_header(self) -> None:
-        header = ctk.CTkFrame(self, fg_color="transparent")
-        header.grid(row=0, column=0, sticky="ew", padx=SPACE["xl"], pady=(SPACE["xl"], SPACE["l"]))
-        header.grid_columnconfigure(0, weight=1)
-        ctk.CTkLabel(
-            header, text="NetDoctor", font=self.fonts["brand"], text_color=PALETTE["text"]
-        ).grid(row=0, column=0, sticky="w")
-        ctk.CTkLabel(
-            header,
-            text=p.SUBTITLE,
-            font=self.fonts["subtitle"],
-            text_color=PALETTE["muted"],
-            height=18,
-        ).grid(row=1, column=0, sticky="w")
-        self.diagnose_btn = ctk.CTkButton(
-            header,
-            text=p.BUTTON_DIAGNOSE,
-            width=180,
-            height=42,
-            corner_radius=10,
-            font=self.fonts["button"],
-            fg_color=PALETTE["accent"],
-            hover_color=PALETTE["accent_hover"],
-            text_color=PALETTE["accent_text"],
-            text_color_disabled=PALETTE["accent_disabled_text"],
-            command=self.start_diagnosis,
+    def _label(self, parent: Any, font: str, color: str = "text", **kw: Any) -> ctk.CTkLabel:
+        return ctk.CTkLabel(
+            parent,
+            text="",
+            font=self.fonts[font],
+            text_color=PALETTE[color],
+            justify="left",
+            anchor="w",
+            **kw,
         )
-        self.diagnose_btn.grid(row=0, column=1, rowspan=2, sticky="e")
+
+    def _rule(self, row: int) -> None:
+        ctk.CTkFrame(self, height=1, corner_radius=0, fg_color=PALETTE["rule"]).grid(
+            row=row, column=0, sticky="ew"
+        )
+
+    def _build_header(self) -> None:
+        brand = self._label(self, "brand")
+        brand.configure(text="NetDoctor")
+        brand.grid(row=0, column=0, sticky="w", padx=MARGIN, pady=(SPACE["l"], SPACE["m"]))
 
     def _build_body(self) -> None:
-        self.card = ctk.CTkFrame(
-            self,
-            corner_radius=12,
-            fg_color=PALETTE["surface"],
-            border_width=1,
-            border_color=PALETTE["border"],
-        )
-        self.card.grid(row=1, column=0, sticky="nsew", padx=SPACE["xl"])
-        self.card.grid_columnconfigure(0, weight=1)
+        body = ctk.CTkFrame(self, fg_color="transparent", corner_radius=0)
+        body.grid(row=2, column=0, sticky="nsew", padx=MARGIN, pady=MARGIN)
+        body.grid_columnconfigure(1, weight=1)
 
-        self.badge = ctk.CTkLabel(
-            self.card, text="", font=self.fonts["badge"], corner_radius=10, height=26
-        )
-        self.title_label = ctk.CTkLabel(
-            self.card,
-            text="",
-            font=self.fonts["title"],
-            text_color=PALETTE["text"],
-            wraplength=WRAP,
-            justify="left",
-            anchor="w",
-        )
-        self.body_label = ctk.CTkLabel(
-            self.card,
-            text="",
-            font=self.fonts["body"],
-            text_color=PALETTE["muted"],
-            wraplength=WRAP,
-            justify="left",
-            anchor="w",
-        )
-        self.actions_title = ctk.CTkLabel(
-            self.card,
-            text=p.ACTIONS_TITLE,
-            font=self.fonts["section"],
-            text_color=PALETTE["text"],
-            anchor="w",
-        )
-        self.actions_label = ctk.CTkLabel(
-            self.card,
-            text="",
-            font=self.fonts["body"],
-            text_color=PALETTE["text"],
-            wraplength=WRAP,
-            justify="left",
-            anchor="w",
-        )
+        # Faixa de cor da gravidade, só no resultado.
+        # height=1: só a largura importa; a altura vem do sticky="ns".
+        self.stripe = ctk.CTkFrame(body, width=STRIPE, height=1, corner_radius=0)
+        self.text_col = ctk.CTkFrame(body, fg_color="transparent", corner_radius=0)
+        self.text_col.grid(row=0, column=1, sticky="nsew")
+        self.text_col.grid_columnconfigure(0, weight=1)
 
-        # Barra determinada: avança uma etapa por vez, sem fingir progresso.
+        self.severity_label = self._label(self.text_col, "label")
+        self.title_label = self._label(self.text_col, "title", wraplength=WRAP)
+        self.body_label = self._label(self.text_col, "body", "muted", wraplength=WRAP)
+        self.actions_title = self._label(self.text_col, "section")
+        self.actions_title.configure(text=p.ACTIONS_TITLE)
+        self.actions_label = self._label(self.text_col, "body", wraplength=WRAP)
+
         self.progress = ctk.CTkProgressBar(
-            self.card,
+            self.text_col,
             mode="determinate",
-            height=6,
+            height=4,
+            corner_radius=2,
             fg_color=PALETTE["track"],
             progress_color=PALETTE["accent"],
         )
-        self.steps_frame = ctk.CTkFrame(self.card, fg_color="transparent")
+        self.steps_frame = ctk.CTkFrame(self.text_col, fg_color="transparent", corner_radius=0)
+        self.steps_frame.grid_columnconfigure(0, weight=1)
         for i, (name, label) in enumerate(STEPS):
-            text, color = step_line(label, "pending")
-            lbl = ctk.CTkLabel(
-                self.steps_frame,
-                text=text,
-                text_color=color,
-                font=self.fonts["body"],
-                anchor="w",
-                height=26,
-            )
-            lbl.grid(row=i, column=0, sticky="w")
-            self._step_labels[name] = lbl
+            row_label = self._label(self.steps_frame, "body", height=28)
+            row_label.configure(text=label)
+            row_label.grid(row=i, column=0, sticky="w")
+            status = self._label(self.steps_frame, "body", "muted", height=28)
+            status.configure(anchor="e")
+            status.grid(row=i, column=1, sticky="e")
+            self._step_status[name] = status
 
     def _build_footer(self) -> None:
-        footer = ctk.CTkFrame(self, fg_color="transparent")
-        footer.grid(row=2, column=0, sticky="ew", padx=SPACE["xl"], pady=(SPACE["l"], SPACE["s"]))
+        footer = ctk.CTkFrame(self, fg_color="transparent", corner_radius=0)
+        footer.grid(row=4, column=0, sticky="ew", padx=MARGIN, pady=SPACE["l"])
+        footer.grid_columnconfigure(0, weight=1)
+
+        self.status_label = self._label(footer, "small", "muted", wraplength=220)
+        self.status_label.configure(text=f"Versão {__version__}")
+        self.status_label.grid(row=0, column=0, sticky="w", padx=(0, SPACE["m"]))
+
+        common = {"height": 32, "corner_radius": 4, "font": self.fonts["button"]}
         secondary = {
-            "height": 36,
-            "corner_radius": 8,
-            "font": self.fonts["body"],
-            "fg_color": "transparent",
-            "hover_color": PALETTE["secondary_hover"],
+            **common,
+            "fg_color": PALETTE["button"],
+            "hover_color": PALETTE["button_hover"],
             "border_width": 1,
-            "border_color": PALETTE["border"],
+            "border_color": PALETTE["button_border"],
             "text_color": PALETTE["text"],
             "text_color_disabled": PALETTE["muted"],
             "state": "disabled",
         }
         self.save_btn = ctk.CTkButton(
-            footer, text=p.BUTTON_SAVE, width=150, command=self.save_report, **secondary
+            footer, text=p.BUTTON_SAVE, width=136, command=self.save_report, **secondary
         )
-        self.save_btn.grid(row=0, column=0, padx=(0, SPACE["s"]))
+        self.save_btn.grid(row=0, column=1, padx=(0, SPACE["s"]))
         self.copy_btn = ctk.CTkButton(
-            footer, text=p.BUTTON_COPY, width=150, command=self.copy_to_clipboard, **secondary
+            footer, text=p.BUTTON_COPY, width=120, command=self.copy_to_clipboard, **secondary
         )
-        self.copy_btn.grid(row=0, column=1)
-        self.status_label = ctk.CTkLabel(
-            self,
-            text=f"v{__version__}",
-            font=self.fonts["small"],
-            text_color=PALETTE["muted"],
-            anchor="w",
-            justify="left",
-            wraplength=WRAP + 40,
+        self.copy_btn.grid(row=0, column=2, padx=(0, SPACE["s"]))
+        self.diagnose_btn = ctk.CTkButton(
+            footer,
+            text=p.BUTTON_DIAGNOSE,
+            width=120,
+            fg_color=PALETTE["accent"],
+            hover_color=PALETTE["accent_hover"],
+            text_color=PALETTE["accent_text"],
+            text_color_disabled=PALETTE["accent_disabled_text"],
+            command=self.start_diagnosis,
+            **common,
         )
-        self.status_label.grid(row=3, column=0, sticky="ew", padx=SPACE["xl"], pady=(0, SPACE["l"]))
+        self.diagnose_btn.grid(row=0, column=3)
 
     # --- Estados da tela ---------------------------------------------------------------
 
-    def _hide_result_parts(self) -> None:
+    def _clear(self) -> None:
         for widget in (
-            self.badge,
+            self.stripe,
+            self.severity_label,
             self.actions_title,
             self.actions_label,
             self.progress,
@@ -234,57 +210,58 @@ class ClientApp(ctk.CTk):
         ):
             widget.grid_forget()
 
-    def _place_texts(self, with_badge: bool) -> None:
-        if with_badge:
-            self.badge.grid(row=0, column=0, sticky="w", padx=PAD, pady=(PAD, SPACE["m"]))
-        title_top = 0 if with_badge else PAD
-        self.title_label.grid(row=1, column=0, sticky="ew", padx=PAD, pady=(title_top, SPACE["s"]))
-        self.body_label.grid(row=2, column=0, sticky="ew", padx=PAD, pady=(0, SPACE["l"]))
+    def _place_texts(self, severity: tuple[str, tuple[str, str]] | None = None) -> None:
+        """Título e corpo; com `severity` (palavra, cor), mostra também a faixa e a palavra."""
+        if severity:
+            word, color = severity
+            self.stripe.configure(fg_color=color)
+            self.stripe.grid(row=0, column=0, sticky="ns", padx=(0, SPACE["l"]))
+            self.severity_label.configure(text=word, text_color=color)
+            self.severity_label.grid(row=0, column=0, sticky="w", pady=(0, SPACE["xs"]))
+        self.title_label.grid(row=1, column=0, sticky="ew", pady=(0, SPACE["s"]))
+        self.body_label.grid(row=2, column=0, sticky="ew", pady=(0, SPACE["l"]))
 
     def _show_welcome(self) -> None:
-        self._hide_result_parts()
+        self._clear()
         self.title_label.configure(text=p.WELCOME_TITLE)
         self.body_label.configure(text=p.WELCOME_BODY)
-        self._place_texts(with_badge=False)
+        self._place_texts()
 
     def _show_running(self) -> None:
-        self._hide_result_parts()
+        self._clear()
         self.title_label.configure(text=p.RUNNING_TITLE)
         self.body_label.configure(text=progress_text("start"))
-        self._place_texts(with_badge=False)
+        self._place_texts()
         self._done_steps.clear()
         self.progress.set(0)
-        self.progress.grid(row=3, column=0, sticky="ew", padx=PAD, pady=(0, SPACE["l"]))
-        for name, label in STEPS:
-            text, color = step_line(label, "pending")
-            self._step_labels[name].configure(text=text, text_color=color)
-        self.steps_frame.grid(row=4, column=0, sticky="w", padx=PAD, pady=(0, PAD))
-
-    def _show_badge(self, text: str, color: tuple[str, str], tint: tuple[str, str]) -> None:
-        self.badge.configure(text=text, text_color=color, fg_color=tint)
-        self._place_texts(with_badge=True)
+        self.progress.grid(row=3, column=0, sticky="ew", pady=(0, SPACE["m"]))
+        for name, _label in STEPS:
+            self._set_step(name, "pending")
+        self.steps_frame.grid(row=4, column=0, sticky="ew")
 
     def _show_result(self, report: dict[str, Any]) -> None:
         self.progress.set(1)
-        self._hide_result_parts()
+        self._clear()
         view = result_view(report["explanation"])
         self.title_label.configure(text=view.title)
         self.body_label.configure(text=view.body)
-        self._show_badge(badge_text(view), view.color, view.tint)
-        self.actions_title.grid(row=3, column=0, sticky="ew", padx=PAD, pady=(0, SPACE["xs"]))
+        self._place_texts((view.label, view.color))
+        self.actions_title.grid(row=3, column=0, sticky="ew", pady=(0, SPACE["xs"]))
         self.actions_label.configure(text=view.actions)
-        self.actions_label.grid(row=4, column=0, sticky="ew", padx=PAD, pady=(0, PAD))
+        self.actions_label.grid(row=4, column=0, sticky="ew")
 
     def _show_error(self) -> None:
-        self._hide_result_parts()
+        self._clear()
         self.title_label.configure(text=p.ERROR_TITLE)
         self.body_label.configure(text=p.ERROR_BODY)
-        icon, color = p.SEVERITY_STYLE["warning"]
-        label = p.SEVERITY_LABEL["warning"]
-        self._show_badge(f"{icon}  {label}", color, p.SEVERITY_TINT["warning"])
+        self._place_texts((p.SEVERITY_LABEL["warning"], p.SEVERITY_COLOR["warning"]))
 
     def _set_status(self, text: str, tone: str = "muted") -> None:
         self.status_label.configure(text=text, text_color=PALETTE[tone])
+
+    def _set_step(self, name: str, state: p.StepState) -> None:
+        text, color = step_status(state)
+        self._step_status[name].configure(text=text, text_color=color)
 
     # --- Ações -----------------------------------------------------------------------
 
@@ -292,7 +269,9 @@ class ClientApp(ctk.CTk):
         if not self.worker.start():
             return
         self.report = None
-        self.diagnose_btn.configure(state="disabled", text=p.BUTTON_RUNNING)
+        self.diagnose_btn.configure(
+            state="disabled", text=p.BUTTON_RUNNING, fg_color=PALETTE["accent_disabled"]
+        )
         self.save_btn.configure(state="disabled")
         self._reset_copy_button()
         self.copy_btn.configure(state="disabled")
@@ -305,9 +284,10 @@ class ClientApp(ctk.CTk):
         for event in self.worker.drain():
             if event.kind == "progress":
                 self.body_label.configure(text=progress_text(event.payload))
-                self._mark_step(event.payload, done=False)
+                if event.payload in dict(STEPS) and event.payload not in self._done_steps:
+                    self._set_step(event.payload, "running")
             elif event.kind == "finished":
-                self._mark_step(event.payload, done=True)
+                self._finish_step(event.payload)
             elif event.kind == "done":
                 self.report = event.payload
                 self._show_result(event.payload)
@@ -316,29 +296,30 @@ class ClientApp(ctk.CTk):
                 self._show_error()
                 finished = True
         if finished:
-            self.diagnose_btn.configure(state="normal", text=p.BUTTON_AGAIN)
+            self.diagnose_btn.configure(
+                state="normal", text=p.BUTTON_AGAIN, fg_color=PALETTE["accent"]
+            )
             if self.report:
                 self.save_btn.configure(state="normal")
                 self.copy_btn.configure(state="normal")
+            self._set_status(f"Versão {__version__}")
         else:
             self.after(POLL_MS, self._poll)
 
-    def _mark_step(self, name: str, done: bool) -> None:
-        label = dict(STEPS).get(name)
-        if label is None or name in self._done_steps:
+    def _finish_step(self, probe: Any) -> None:
+        name = probe.name
+        if name not in dict(STEPS) or name in self._done_steps:
             return
-        if done:
-            self._done_steps.add(name)
-            self.progress.set(progress_fraction(len(self._done_steps), len(STEPS)))
-        text, color = step_line(label, "done" if done else "running")
-        self._step_labels[name].configure(text=text, text_color=color)
+        self._done_steps.add(name)
+        self.progress.set(progress_fraction(len(self._done_steps), len(STEPS)))
+        self._set_step(name, step_state(probe))
 
     def save_report(self) -> None:
         if not self.report:
             return
         path = filedialog.asksaveasfilename(
             parent=self,
-            title=p.BUTTON_SAVE,
+            title=p.BUTTON_SAVE.rstrip("…"),
             defaultextension=".html",
             initialfile=default_report_name(datetime.now()),
             filetypes=[("Relatório (HTML)", "*.html")],
@@ -362,7 +343,7 @@ class ClientApp(ctk.CTk):
         self._set_status(p.COPIED_TEXT, "ok")
         # Confirmação no próprio botão por um instante, depois volta ao normal.
         self._reset_copy_button()
-        self.copy_btn.configure(text=p.BUTTON_COPIED, text_color=PALETTE["ok"])
+        self.copy_btn.configure(text=p.BUTTON_COPIED)
         self._copied_job = self.after(COPIED_MS, self._reset_copy_button)
 
     def _reset_copy_button(self) -> None:
@@ -370,7 +351,7 @@ class ClientApp(ctk.CTk):
             with contextlib.suppress(Exception):
                 self.after_cancel(self._copied_job)
             self._copied_job = None
-        self.copy_btn.configure(text=p.BUTTON_COPY, text_color=PALETTE["text"])
+        self.copy_btn.configure(text=p.BUTTON_COPY)
 
 
 def _ensure_std_streams() -> None:
