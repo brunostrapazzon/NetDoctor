@@ -152,7 +152,7 @@ Feito com os princípios de design engineering (Emil Kowalski) que cabem em cada
   - **Textos diretos:** "Teste da conexão" em vez de "Vamos testar sua internet?", e sem slogan.
   - Não muda: thread do worker + fila + `after(100)`, Salvar grava HTML e `.json`, o resumo copiado não leva nenhum identificador da rede.
   - `tests/test_ui_app.py` monta a janela de verdade com widgets falsos. Eles aceitam só os parâmetros da assinatura do widget instalado, então um parâmetro errado quebra o teste. O teste passa por esperando → testando → resultado → copiar, e pelo erro. **A janela em si não foi aberta**: falta conferir à vista.
-  - As capturas em `docs/img/` são da janela antiga e precisam ser refeitas.
+  - As capturas da janela antiga saíram de `docs/img/`. O README mostra o relatório do cliente e o laudo técnico, gerados a partir dos dados de teste (relatório HTML renderizado pelo Edge sem janela), não de uma rede real.
 
 ## IA (Marco 5)
 

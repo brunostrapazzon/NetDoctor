@@ -4,9 +4,11 @@ Diagnóstico de internet para Windows que explica a causa do problema em portugu
 
 > **Status:** os 7 marcos da v1 estão prontos: interface gráfica do Modo Cliente, testes de rede (incluindo Wi-Fi), regras de diagnóstico, explicação em português simples (offline, com IA opcional), relatórios JSON/HTML, `.exe` gerado pelo PyInstaller e Modo Técnico com laudo (pela linha de comando).
 
-| Testando | Resultado (tema claro) | Resultado (tema escuro) |
-|---|---|---|
-| ![Testando](docs/img/cliente-testando.png) | ![Resultado claro](docs/img/cliente-claro.png) | ![Resultado escuro](docs/img/cliente-escuro.png) |
+| Relatório do cliente | Laudo técnico (Modo Técnico) |
+|---|---|
+| ![Relatório do cliente: Wi-Fi fraco, sinal de 30% e o que fazer](docs/img/relatorio-cliente.webp) | ![Laudo técnico: canal congestionado, perda na operadora e aparelhos na rede](docs/img/laudo-tecnico.webp) |
+
+<sub>Gerados com os dados de teste do projeto, não de uma rede real. Download e versão mais recente na página de [Releases](https://github.com/brunostrapazzon/NetDoctor/releases/latest).</sub>
 
 ## O problema
 
@@ -195,7 +197,6 @@ Saem dois arquivos únicos em `dist\`: `NetDoctor.exe` (interface, sem console, 
 - Ainda não foi testado com a rede desligada nem em rede com portal cativo real.
 - A probe `adapter` leva de 3 a 7 s porque o PowerShell precisa carregar os módulos de rede.
 - O `.exe` não é assinado, então o SmartScreen avisa na primeira execução. Como é `--onefile`, ele se extrai numa pasta temporária a cada abertura, o que leva 1 ou 2 segundos.
-- Os workflows do GitHub Actions ainda não rodaram de verdade: o repositório ainda não foi publicado.
 - Modo Técnico:
   - Só pela linha de comando; a interface gráfica ainda não tem o botão.
   - As saídas em inglês do `netsh wlan show networks` e do `tracert`, e o caso com várias redes vizinhas, foram montados a partir do formato real, não capturados.
