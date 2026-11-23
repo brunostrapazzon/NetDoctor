@@ -87,7 +87,7 @@ Fatos confirmados na documentação oficial em 2026-11-20. Rever antes dos marco
   - Nas propriedades do arquivo aparecem a descrição, a versão e o copyright.
   - `NetDoctor.exe` abre a janela com o ícone novo.
 - **Não verificado:**
-  - O clique em Diagnosticar dentro do `NetDoctor.exe`: o teste da janela fica com o Bruno.
+  - O clique em Diagnosticar dentro do `NetDoctor.exe` (a janela é conferida à mão, fora dos testes automáticos).
   - Os workflows rodando no GitHub (repositório ainda não publicado).
   - O aviso do SmartScreen num computador limpo.
 
@@ -142,7 +142,7 @@ Feito com os princípios de design engineering (Emil Kowalski) que cabem em cada
   - Celular (≤ 600 px): o ícone grande some (o selo já tem ícone), o sumário vira uma linha que rola de lado e as tabelas usam a largura toda.
   - Data em formato brasileiro com o fuso gravado (`<time datetime>` guarda o ISO original).
   - Conferido com dados falsos dos testes no painel de navegador: claro e escuro a 1100–1200 px e escuro a 375 px, sem rolagem horizontal da página.
-- **Janela (CustomTkinter 6.0.0), segunda versão.** O Bruno achou que a primeira versão ainda tinha "cara de IA". O HTML ficou como estava; a janela foi refeita com outra direção: **utilitário do Windows, não página de produto**.
+- **Janela (CustomTkinter 6.0.0), segunda versão.** A primeira versão ainda parecia gerada por IA. O HTML ficou como estava; a janela foi refeita com outra direção: **utilitário do Windows, não página de produto**.
   - **Fonte do sistema.** O tema padrão do CustomTkinter usa Roboto; agora é Segoe UI (Semibold nos títulos), a fonte do próprio Windows.
   - **Cores do sistema do Windows 11** (neutros #f3f3f3/#202020, destaque #005fb8/#60cdff, estados de sucesso, cuidado e erro do Fluent), em vez da paleta de "SaaS".
   - **Sem cartão nem selo.** O conteúdo fica direto no fundo da janela, entre duas linhas finas. A gravidade é uma faixa de cor de 4 px ao lado do resultado mais a palavra (Normal, Atenção, Problema).
@@ -158,3 +158,9 @@ Feito com os princípios de design engineering (Emil Kowalski) que cabem em cada
 
 - **Groq:** API compatível com OpenAI em `https://api.groq.com/openai/v1`. Dá para usar o SDK `openai` com `base_url` trocada, o que facilita trocar de provedor (Groq/OpenAI/Ollama).
 - **Modelos:** listar com `GET https://api.groq.com/openai/v1/models`. A lista muda com frequência, então o modelo fica só em `NETDOCTOR_LLM_MODEL` e nunca fixo no código. Conferir a lista no momento do Marco 5.
+
+## Licença
+
+- **PolyForm Noncommercial 1.0.0** no lugar da MIT, antes da primeira publicação. A MIT deixaria qualquer empresa (inclusive um provedor) usar e vender o NetDoctor sem retorno ao autor. Com a PolyForm Noncommercial, uso pessoal, estudo e entidades sem fins lucrativos continuam livres; uso comercial precisa de licença do autor.
+- Não é uma licença de código aberto no sentido da OSI: o código é **disponível**, não "aberto". O README e a divulgação usam essa palavra.
+- O identificador SPDX no `pyproject.toml` é `PolyForm-Noncommercial-1.0.0`; o copyright do `.exe` cita a licença.
