@@ -2,6 +2,8 @@
 
 Diagnóstico de internet para Windows que explica a causa do problema em português simples.
 
+Autor: Bruno Strapazzon · [portfólio](https://brunostrapazzon.github.io) · [LinkedIn](https://www.linkedin.com/in/brunostrapazzon)
+
 > **Status:** os 7 marcos da v1 estão prontos: interface gráfica do Modo Cliente, testes de rede (incluindo Wi-Fi), regras de diagnóstico, explicação em português simples (offline, com IA opcional), relatórios JSON/HTML, `.exe` gerado pelo PyInstaller e Modo Técnico com laudo (pela linha de comando).
 
 | Relatório do cliente | Laudo técnico (Modo Técnico) |
